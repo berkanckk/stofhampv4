@@ -2,12 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import Link from 'next/link'
 import { format } from 'date-fns'
 import { tr } from 'date-fns/locale'
-import { use } from 'react'
 
 interface User {
   id: string
@@ -21,6 +18,7 @@ interface Message {
   senderId: string
   sender: User
   createdAt: string
+  isRead: boolean
 }
 
 interface PageProps {
@@ -28,41 +26,19 @@ interface PageProps {
 }
 
 export default function ConversationPage({ params }: PageProps) {
-  const resolvedParams = use(params)
-  const { data: session, status } = useSession()
-  const router = useRouter()
+  const { data: session } = useSession()
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState('')
   const [loading, setLoading] = useState(true)
-  const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const conversationId = resolvedParams.id
-
-  useEffect(() => {
-    window.scrollTo(0, 0)
-  }, [])
-
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login')
-    }
-  }, [status, router])
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
-
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages])
+  const firstUnreadRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const fetchMessages = async () => {
-      if (!session?.user) return
-
       try {
-        const response = await fetch(`/api/conversations/${conversationId}/messages`)
+        const resolvedParams = await params
+        const response = await fetch(`/api/conversations/${resolvedParams.id}/messages`)
         const result = await response.json()
 
         if (!result.success) {
@@ -70,6 +46,15 @@ export default function ConversationPage({ params }: PageProps) {
         }
 
         setMessages(result.data)
+
+        // Mesajları okundu olarak işaretle
+        await fetch('/api/messages/mark-read', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ conversationId: resolvedParams.id }),
+        })
       } catch (error) {
         setError('Mesajlar yüklenirken bir hata oluştu')
         console.error('Fetch messages error:', error)
@@ -78,16 +63,37 @@ export default function ConversationPage({ params }: PageProps) {
       }
     }
 
-    fetchMessages()
-  }, [session, conversationId])
+    if (session?.user?.id) {
+      fetchMessages()
+    }
+  }, [session, params])
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  const scrollToFirstUnread = () => {
+    firstUnreadRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      scrollToBottom()
+      // İlk okunmamış mesaja git
+      const hasUnread = messages.some(msg => !msg.isRead && msg.senderId !== session?.user?.id)
+      if (hasUnread) {
+        scrollToFirstUnread()
+      }
+    }
+  }, [messages, session?.user?.id])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newMessage.trim() || sending || !session?.user) return
+    if (!newMessage.trim() || !session?.user?.id) return
 
-    setSending(true)
     try {
-      const response = await fetch(`/api/conversations/${conversationId}/messages`, {
+      const resolvedParams = await params
+      const response = await fetch(`/api/conversations/${resolvedParams.id}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -101,43 +107,21 @@ export default function ConversationPage({ params }: PageProps) {
         throw new Error(result.message)
       }
 
-      setMessages((prev) => [...prev, result.data])
+      setMessages(prev => [...prev, result.data])
       setNewMessage('')
+      scrollToBottom()
     } catch (error) {
       console.error('Send message error:', error)
-      setError('Mesaj gönderilemedi')
-    } finally {
-      setSending(false)
+      setError('Mesaj gönderilirken bir hata oluştu')
     }
   }
 
-  if (status === 'loading') {
+  if (!session) {
     return (
       <div className="min-h-screen bg-gray-50 pt-24 pb-12">
         <div className="container mx-auto px-4">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Yükleniyor...</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (status === 'unauthenticated') {
-    return (
-      <div className="min-h-screen bg-gray-50 pt-24 pb-12">
-        <div className="container mx-auto px-4">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">
-              Bu sayfayı görüntülemek için giriş yapmanız gerekiyor
-            </h1>
-            <Link
-              href="/login"
-              className="inline-block bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700"
-            >
-              Giriş Yap
-            </Link>
+            <p className="text-gray-600">Bu sayfayı görüntülemek için giriş yapmalısınız.</p>
           </div>
         </div>
       </div>
@@ -157,85 +141,97 @@ export default function ConversationPage({ params }: PageProps) {
     )
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 pt-24 pb-12">
-        <div className="container mx-auto px-4">
-          <div className="text-center">
-            <p className="text-red-600">{error}</p>
-            <Link href="/messages" className="text-green-600 hover:text-green-700 mt-4 inline-block">
-              Mesajlara Dön
-            </Link>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pt-24 pb-12">
       <div className="container mx-auto px-4">
-        <div className="max-w-4xl mx-auto pt-20">
-          <div className="bg-white rounded-2xl shadow-lg overflow-hidden h-[calc(100vh-6rem)]">
-            {/* Üst Bar */}
-            <div className="bg-white border-b px-6 py-4">
+        <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
+          <div className="flex flex-col h-[calc(100vh-200px)]">
+            {/* Sohbet Başlığı */}
+            <div className="p-4 border-b bg-gray-50">
               <div className="flex items-center justify-between">
-                <Link
-                  href="/messages"
-                  className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
-                >
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                  </svg>
-                  <span>Mesajlar</span>
-                </Link>
+                <div className="flex items-center space-x-3">
+                  {messages[0]?.sender && messages[0]?.sender.id !== session?.user?.id && (
+                    <div className="w-10 h-10 relative">
+                      {messages[0].sender.profileImage ? (
+                        <Image
+                          src={messages[0].sender.profileImage}
+                          alt={messages[0].sender.name}
+                          fill
+                          className="rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-green-100 rounded-full flex items-center justify-center">
+                          <span className="text-green-600 text-lg font-medium">
+                            {messages[0].sender.name.charAt(0)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      {messages[0]?.sender && messages[0]?.sender.id !== session?.user?.id
+                        ? messages[0].sender.name
+                        : messages[1]?.sender.name}
+                    </h2>
+                    <p className="text-sm text-gray-500">
+                      {messages.filter(m => !m.isRead && m.senderId !== session?.user?.id).length} okunmamış mesaj
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Mesaj Alanı */}
-            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4 h-[calc(100vh-15rem)] bg-gray-50">
-              {messages.map((message) => {
-                const isOwnMessage = message.senderId === session?.user?.id;
+            {/* Mesajlar */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {messages.map((message, index) => {
+                const isFirstUnread = !message.isRead && 
+                  message.senderId !== session.user.id && 
+                  messages.slice(0, index).every(m => m.isRead || m.senderId === session.user.id)
+
                 return (
-                  <div
-                    key={message.id}
-                    className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div className={`flex items-end space-x-2 max-w-[75%]`}>
-                      {!isOwnMessage && (
-                        <div className="flex-shrink-0 w-8 h-8 relative">
-                          {message.sender.profileImage ? (
-                            <Image
-                              src={message.sender.profileImage}
-                              alt={message.sender.name}
-                              fill
-                              sizes="(max-width: 40px) 100vw, 40px"
-                              className="rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-green-100 rounded-full flex items-center justify-center">
-                              <span className="text-green-700 text-sm font-medium">
-                                {message.sender.name.charAt(0)}
-                              </span>
-                            </div>
-                          )}
+                  <div key={message.id}>
+                    {isFirstUnread && (
+                      <div 
+                        ref={firstUnreadRef}
+                        className="flex items-center justify-center my-4"
+                      >
+                        <div className="bg-red-100 text-red-600 px-4 py-2 rounded-full text-sm font-medium animate-newMessageBadgePulse shadow-lg">
+                          {messages.filter(m => !m.isRead && m.senderId !== session?.user?.id).length} Yeni Mesaj
                         </div>
-                      )}
+                      </div>
+                    )}
+                    <div
+                      className={`flex ${
+                        message.senderId === session.user.id ? 'justify-end' : 'justify-start'
+                      }`}
+                    >
                       <div
-                        className={`px-4 py-2 rounded-2xl ${
-                          isOwnMessage
+                        className={`max-w-[70%] rounded-lg px-4 py-2 ${
+                          message.senderId === session.user.id
                             ? 'bg-green-600 text-white'
-                            : 'bg-white border border-gray-200 text-gray-900'
+                            : 'bg-gray-100 text-gray-900'
+                        } ${
+                          !message.isRead && message.senderId !== session.user.id
+                            ? 'border-2 border-red-500 animate-messagePulse shadow-md'
+                            : ''
                         }`}
                       >
-                        <p className="text-sm whitespace-pre-wrap break-words">
-                          {message.content}
-                        </p>
-                        <span className={`text-xs mt-1 block ${
-                          isOwnMessage ? 'text-green-100' : 'text-gray-500'
-                        }`}>
-                          {format(new Date(message.createdAt), 'HH:mm', { locale: tr })}
-                        </span>
+                        <p>{message.content}</p>
+                        <div className="flex items-center justify-end space-x-1 mt-1">
+                          <p className={`text-xs ${
+                            message.senderId === session.user.id
+                              ? 'text-green-100'
+                              : 'text-gray-500'
+                          }`}>
+                            {format(new Date(message.createdAt), 'HH:mm', { locale: tr })}
+                          </p>
+                          {message.senderId === session.user.id && (
+                            <svg className="w-4 h-4 text-green-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -245,31 +241,21 @@ export default function ConversationPage({ params }: PageProps) {
             </div>
 
             {/* Mesaj Gönderme Formu */}
-            <div className="bg-white border-t px-6 py-4">
-              <form onSubmit={handleSubmit} className="flex items-center space-x-4">
+            <div className="border-t p-4 bg-white">
+              <form onSubmit={handleSubmit} className="flex space-x-4">
                 <input
                   type="text"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Mesajınızı yazın..."
-                  className="flex-1 bg-gray-50 border border-gray-200 rounded-full px-6 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  disabled={sending}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 />
                 <button
                   type="submit"
-                  disabled={sending || !newMessage.trim()}
-                  className="bg-green-600 text-white p-3 rounded-full hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                  disabled={!newMessage.trim()}
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {sending ? (
-                    <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
+                  Gönder
                 </button>
               </form>
             </div>
@@ -278,4 +264,4 @@ export default function ConversationPage({ params }: PageProps) {
       </div>
     </div>
   )
-} 
+}

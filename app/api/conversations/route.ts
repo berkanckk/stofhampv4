@@ -40,10 +40,16 @@ export async function GET() {
           }
         },
         messages: {
+          select: {
+            id: true,
+            content: true,
+            senderId: true,
+            isRead: true,
+            createdAt: true,
+          },
           orderBy: {
             createdAt: 'desc'
-          },
-          take: 1,
+          }
         },
       },
       orderBy: {

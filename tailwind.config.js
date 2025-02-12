@@ -41,6 +41,28 @@ module.exports = {
         navButtonPulse: {
           '0%, 100%': { transform: 'scale(1)' },
           '50%': { transform: 'scale(1.05)' }
+        },
+        messagePulse: {
+          '0%, 100%': { 
+            opacity: '1',
+            transform: 'scale(1)',
+            borderColor: 'rgba(239, 68, 68, 0.8)'
+          },
+          '50%': { 
+            opacity: '0.8',
+            transform: 'scale(1.02)',
+            borderColor: 'rgba(239, 68, 68, 0.4)'
+          }
+        },
+        newMessageBadgePulse: {
+          '0%, 100%': { 
+            backgroundColor: 'rgba(254, 226, 226, 1)',
+            color: 'rgba(220, 38, 38, 1)'
+          },
+          '50%': { 
+            backgroundColor: 'rgba(254, 202, 202, 1)',
+            color: 'rgba(185, 28, 28, 1)'
+          }
         }
       },
       animation: {
@@ -49,7 +71,9 @@ module.exports = {
         blob: 'blob 7s infinite',
         navSlideDown: 'navSlideDown 0.5s ease-out',
         navLinkFade: 'navLinkFade 0.5s ease-out forwards',
-        navButtonPulse: 'navButtonPulse 2s infinite'
+        navButtonPulse: 'navButtonPulse 2s infinite',
+        messagePulse: 'messagePulse 2s infinite',
+        newMessageBadgePulse: 'newMessageBadgePulse 2s infinite'
       }
     },
   },

@@ -14,6 +14,7 @@ export default function Header() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
   const { data: session } = useSession()
   const pathname = usePathname()
   const isHomePage = pathname === '/'
@@ -27,9 +28,29 @@ export default function Header() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  useEffect(() => {
+    const checkUnreadMessages = async () => {
+      if (session?.user?.id) {
+        try {
+          const response = await fetch('/api/messages/unread-count')
+          const data = await response.json()
+          if (data.success) {
+            setUnreadCount(data.count)
+          }
+        } catch (error) {
+          console.error('Okunmamış mesaj sayısı alınamadı:', error)
+        }
+      }
+    }
+
+    checkUnreadMessages()
+    const interval = setInterval(checkUnreadMessages, 30000)
+    return () => clearInterval(interval)
+  }, [session])
+
   if (!mounted) {
     return (
-      <header className="fixed w-full z-40 bg-white shadow-sm">
+      <header className="fixed top-0 w-full z-40 bg-white shadow-sm">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center h-20">
             <Link href="/" className="text-2xl font-bold text-gray-900">
@@ -64,7 +85,7 @@ export default function Header() {
     ? `fixed w-full z-40 transition-all duration-500 animate-navSlideDown ${
         isScrolled ? 'bg-white shadow-lg' : 'bg-transparent'
       }`
-    : 'fixed w-full z-40 bg-white shadow-lg animate-navSlideDown'
+    : 'fixed w-full top-0 z-40 bg-white shadow-lg animate-navSlideDown'
 
   const linkStyle = isHomePage && !isScrolled
     ? 'text-white hover:text-gray-200 text-base font-medium transition-all duration-300 hover:scale-105 animate-navLinkFade'
@@ -108,7 +129,7 @@ export default function Header() {
 
           <div className="flex items-center space-x-4">
             {session ? (
-              <UserMenu session={session} linkStyle={linkStyle} />
+              <UserMenu session={session} linkStyle={linkStyle} unreadCount={unreadCount} />
             ) : (
               <>
                 <Link 

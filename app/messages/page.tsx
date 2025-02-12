@@ -23,6 +23,8 @@ interface Message {
   id: string
   content: string
   createdAt: string
+  isRead: boolean
+  senderId: string
 }
 
 interface Conversation {
@@ -58,6 +60,7 @@ export default function MessagesPage() {
           throw new Error(result.message)
         }
 
+        console.log('Conversations data:', result.data)
         setConversations(result.data)
       } catch (error) {
         setError('Sohbetler yüklenirken bir hata oluştu')
@@ -179,7 +182,14 @@ export default function MessagesPage() {
                               </span>
                             </div>
                           )}
-                          <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
+                          {conversation.messages.some(m => !m.isRead && m.senderId !== session?.user?.id) && (
+                            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center animate-bounce shadow-lg border-2 border-white">
+                              {conversation.messages.filter(m => {
+                                console.log('Message:', m);
+                                return !m.isRead && m.senderId !== session?.user?.id;
+                              }).length}
+                            </span>
+                          )}
                         </div>
 
                         <div className="flex-1 min-w-0">
@@ -205,12 +215,21 @@ export default function MessagesPage() {
                           )}
 
                           {lastMessage && (
-                            <p className="text-sm text-gray-500 truncate flex items-center">
-                              <svg className="w-4 h-4 mr-1 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                              </svg>
-                              {lastMessage.content}
-                            </p>
+                            <div className="flex items-center justify-between">
+                              <p className={`text-sm truncate flex-1 ${
+                                !lastMessage.isRead && lastMessage.senderId !== session?.user?.id
+                                  ? 'font-semibold text-gray-900'
+                                  : 'text-gray-500'
+                              }`}>
+                                <svg className="w-4 h-4 mr-1 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                                </svg>
+                                {lastMessage.content}
+                              </p>
+                              {!lastMessage.isRead && lastMessage.senderId !== session?.user?.id && (
+                                <span className="ml-2 w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>

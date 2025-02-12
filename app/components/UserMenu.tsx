@@ -8,9 +8,10 @@ import { Session } from 'next-auth'
 interface UserMenuProps {
   session: Session
   linkStyle: string
+  unreadCount: number
 }
 
-export default function UserMenu({ session, linkStyle }: UserMenuProps) {
+export default function UserMenu({ session, linkStyle, unreadCount }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
 
   return (
@@ -55,10 +56,15 @@ export default function UserMenu({ session, linkStyle }: UserMenuProps) {
           </Link>
           <Link
             href="/messages"
-            className="block px-4 py-2 text-gray-700 hover:bg-gray-100 text-base transition-colors duration-300"
+            className="block px-4 py-2 text-gray-700 hover:bg-gray-100 text-base transition-colors duration-300 relative"
             onClick={() => setIsOpen(false)}
           >
             Mesajlarım
+            {unreadCount > 0 && (
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
+                {unreadCount}
+              </span>
+            )}
           </Link>
           <button
             onClick={() => {
