@@ -1,11 +1,17 @@
 type LogLevel = 'info' | 'warn' | 'error'
 
+interface ErrorObject {
+  name: string
+  message: string
+  stack?: string
+}
+
 interface LogEntry {
   timestamp: string
   level: LogLevel
   message: string
-  error?: any
-  context?: Record<string, any>
+  error?: ErrorObject
+  context?: Record<string, unknown>
 }
 
 class Logger {
@@ -22,7 +28,7 @@ class Logger {
     return Logger.instance
   }
 
-  private addLog(level: LogLevel, message: string, error?: any, context?: Record<string, any>) {
+  private addLog(level: LogLevel, message: string, error?: Error | unknown, context?: Record<string, unknown>) {
     const logEntry: LogEntry = {
       timestamp: new Date().toISOString(),
       level,
@@ -44,7 +50,7 @@ class Logger {
     }
   }
 
-  private formatError(error: any): any {
+  private formatError(error: Error | unknown): ErrorObject {
     if (error instanceof Error) {
       return {
         name: error.name,
@@ -52,18 +58,21 @@ class Logger {
         stack: error.stack
       }
     }
-    return error
+    return {
+      name: 'UnknownError',
+      message: String(error)
+    }
   }
 
-  public info(message: string, context?: Record<string, any>) {
+  public info(message: string, context?: Record<string, unknown>) {
     this.addLog('info', message, undefined, context)
   }
 
-  public warn(message: string, context?: Record<string, any>) {
+  public warn(message: string, context?: Record<string, unknown>) {
     this.addLog('warn', message, undefined, context)
   }
 
-  public error(message: string, error?: any, context?: Record<string, any>) {
+  public error(message: string, error?: Error | unknown, context?: Record<string, unknown>) {
     this.addLog('error', message, error, context)
   }
 

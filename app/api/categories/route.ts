@@ -2,18 +2,36 @@ import { NextResponse } from 'next/server'
 import prisma from '@/app/lib/prismadb'
 import { globalCache } from '@/app/lib/cache'
 
+interface Category {
+  id: string
+  name: string
+  description: string | null
+  createdAt: Date
+  updatedAt: Date
+  _count?: {
+    listings: number
+  }
+}
+
 const CACHE_KEY = 'categories'
 
 export async function GET() {
   try {
     // Cache'den kategorileri al
-    let categories = globalCache.get<any[]>(CACHE_KEY)
+    let categories = globalCache.get<Category[]>(CACHE_KEY)
 
     // Cache'de yoksa veritabanından al
     if (!categories) {
       categories = await prisma.category.findMany({
         orderBy: {
           name: 'asc'
+        },
+        include: {
+          _count: {
+            select: {
+              listings: true
+            }
+          }
         }
       })
 

@@ -1,10 +1,18 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 
 export default function Home() {
+  const router = useRouter()
   const { data: session } = useSession()
+
+  const handleSearch = (value: string) => {
+    if (value) {
+      router.push(`/listings?search=${encodeURIComponent(value)}`)
+    }
+  }
 
   return (
     <div className="min-h-screen">
@@ -43,9 +51,7 @@ export default function Home() {
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         const searchInput = document.getElementById('searchInput') as HTMLInputElement;
-                        if (searchInput.value) {
-                          window.location.href = `/listings?search=${encodeURIComponent(searchInput.value)}`;
-                        }
+                        handleSearch(searchInput.value);
                       }
                     }}
                   />
@@ -58,9 +64,7 @@ export default function Home() {
                 <button
                   onClick={() => {
                     const searchInput = document.getElementById('searchInput') as HTMLInputElement;
-                    if (searchInput.value) {
-                      window.location.href = `/listings?search=${encodeURIComponent(searchInput.value)}`;
-                    }
+                    handleSearch(searchInput.value);
                   }}
                   className="px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-green-600/90 to-green-500/90 rounded-full hover:from-green-500/90 hover:to-green-400/90 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-105"
                 >
@@ -151,26 +155,26 @@ export default function Home() {
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               {!session ? (
-                <a
+                <Link
                   href="/register"
                   className="bg-green-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-green-700 transition-colors text-lg"
                 >
                   Ücretsiz Üye Ol
-                </a>
+                </Link>
               ) : (
-                <a
+                <Link
                   href="/listings/create"
                   className="bg-green-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-green-700 transition-colors text-lg"
                 >
                   İlan Ver
-                </a>
+                </Link>
               )}
-              <a
+              <Link
                 href="/listings"
                 className="bg-white text-green-700 px-8 py-4 rounded-lg font-semibold hover:bg-green-50 transition-colors border-2 border-green-600 text-lg"
               >
                 İlanları Görüntüle
-              </a>
+              </Link>
             </div>
           </div>
         </div>

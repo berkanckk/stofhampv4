@@ -2,6 +2,7 @@
 
 import { motion, useScroll, useTransform } from 'framer-motion'
 import Image from 'next/image'
+import Link from 'next/link'
 import { useRef } from 'react'
 
 const teamMembers = [
@@ -112,12 +113,18 @@ export default function AboutPage() {
             transition={{ duration: 0.8, delay: 0.8 }}
             className="flex gap-4"
           >
-            <a href="/listings" className="px-8 py-4 bg-white text-green-800 rounded-full font-semibold hover:bg-green-50 transition-colors duration-300">
+            <Link 
+              href="/listings" 
+              className="px-8 py-4 bg-white text-green-800 rounded-full font-semibold hover:bg-green-50 transition-colors duration-300"
+            >
               İlanları Keşfet
-            </a>
-            <a href="/contact" className="px-8 py-4 border-2 border-white text-white rounded-full font-semibold hover:bg-white/10 transition-colors duration-300">
+            </Link>
+            <Link 
+              href="/contact" 
+              className="px-8 py-4 border-2 border-white text-white rounded-full font-semibold hover:bg-white/10 transition-colors duration-300"
+            >
               Bize Ulaşın
-            </a>
+            </Link>
           </motion.div>
         </div>
 

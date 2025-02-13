@@ -4,10 +4,12 @@ interface CacheItem<T> {
   ttl?: number; // Özel TTL süresi (ms)
 }
 
+type FilterValue = string | number | boolean | null;
+
 interface CompositeKey {
   page: number;
   sortBy: string;
-  filters: Record<string, any>;
+  filters: Record<string, FilterValue>;
 }
 
 interface BatchKey {
@@ -22,7 +24,7 @@ interface MessageCacheKey {
 }
 
 class Cache {
-  private cache: Map<string, CacheItem<any>> = new Map();
+  private cache: Map<string, CacheItem<unknown>> = new Map();
   private readonly DEFAULT_TTL: number = 5 * 60 * 1000; // 5 dakika
   private readonly COMPOSITE_TTL: number = 2 * 60 * 1000; // 2 dakika
   private readonly BATCH_TTL: number = 30 * 1000; // 30 saniye

@@ -1,9 +1,8 @@
 'use client'
 
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback, Suspense } from 'react'
 import Link from 'next/link'
-import { useSearchParams, useRouter } from 'next/navigation'
-import Image from 'next/image'
+import { useSearchParams } from 'next/navigation'
 import { format } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import ListingImage from '@/app/components/ListingImage'
@@ -81,17 +80,13 @@ interface Filters {
   search: string | null
 }
 
-export default function ListingsPage() {
-  const router = useRouter()
+function ListingsContent() {
   const searchParams = useSearchParams()
   const [listings, setListings] = useState<Listing[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [materialTypes, setMaterialTypes] = useState<MaterialType[]>([])
   const [loading, setLoading] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [activeFilters, setActiveFilters] = useState<Filters>({
     category: searchParams.get('category'),
@@ -113,22 +108,14 @@ export default function ListingsPage() {
     search: searchParams.get('search')
   })
 
-  // Filtre state'leri
-  const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '')
-  const [selectedMaterial, setSelectedMaterial] = useState(searchParams.get('materialId') || '')
-  const [selectedCondition, setSelectedCondition] = useState(searchParams.get('condition') || '')
-  const [minPrice, setMinPrice] = useState(searchParams.get('minPrice') || '')
-  const [maxPrice, setMaxPrice] = useState(searchParams.get('maxPrice') || '')
-  const [location, setLocation] = useState(searchParams.get('location') || '')
-  const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [sortBy, setSortBy] = useState(searchParams.get('sortBy') || 'newest')
   const [currentImageIndexes, setCurrentImageIndexes] = useState<Record<string, number>>({})
-
   const [pendingSortBy, setPendingSortBy] = useState(searchParams.get('sortBy') || 'newest')
+  const [currentPage, setCurrentPage] = useState(1)
 
   const observer = useRef<IntersectionObserver | null>(null)
   const lastListingElementRef = useCallback((node: Element | null) => {
-    if (loading || loadingMore) return
+    if (loading) return
     if (observer.current) observer.current.disconnect()
     observer.current = new IntersectionObserver(entries => {
       if (entries[0].isIntersecting && hasMore) {
@@ -136,7 +123,7 @@ export default function ListingsPage() {
       }
     })
     if (node) observer.current.observe(node)
-  }, [loading, loadingMore, hasMore])
+  }, [loading, hasMore])
 
   const fetchListings = async (page: number, filters = activeFilters, isLoadMore = false) => {
     try {
@@ -184,8 +171,6 @@ export default function ListingsPage() {
         setMaterialTypes(data.data.materialTypes);
       }
 
-      setTotalPages(data.data.pagination.totalPages);
-      setHasMore(data.data.pagination.hasNextPage);
       setError(null);
     } catch (error) {
       console.error('Fetch listings error:', error);
@@ -637,5 +622,17 @@ export default function ListingsPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ListingsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex justify-center items-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      </div>
+    }>
+      <ListingsContent />
+    </Suspense>
   )
 } 

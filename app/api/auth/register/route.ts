@@ -57,10 +57,12 @@ export async function POST(request: Request) {
       }
     )
   } catch (error) {
+    console.error('Kayıt hatası:', error)
     return new Response(
       JSON.stringify({ 
         success: false,
-        message: 'Kayıt işlemi sırasında bir hata oluştu' 
+        message: 'Kayıt işlemi sırasında bir hata oluştu',
+        error: error instanceof Error ? error.message : 'Bilinmeyen hata'
       }),
       { 
         status: 500,

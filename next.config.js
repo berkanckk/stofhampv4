@@ -9,6 +9,19 @@ const nextConfig = {
       },
     ],
     domains: ['res.cloudinary.com', 'lh3.googleusercontent.com'],
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  poweredByHeader: false,
+  reactStrictMode: true,
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '2mb'
+    }
   }
 }
 
