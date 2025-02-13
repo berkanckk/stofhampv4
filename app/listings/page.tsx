@@ -1,20 +1,30 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
+import { format } from 'date-fns'
+import { tr } from 'date-fns/locale'
+import ListingImage from '@/app/components/ListingImage'
+import { motion } from 'framer-motion'
 
 interface Category {
   id: string
   name: string
   description: string | null
+  _count?: {
+    listings: number
+  }
 }
 
 interface MaterialType {
   id: string
   name: string
   description: string | null
+  _count?: {
+    listings: number
+  }
 }
 
 interface Seller {
@@ -36,22 +46,75 @@ interface Listing {
   material: MaterialType
   seller: Seller
   createdAt: string
+  _count: {
+    favorites: number
+  }
+}
+
+type FilterKey = 'category' | 'material' | 'condition' | 'minPrice' | 'maxPrice' | 'location' | 'search';
+
+interface Pagination {
+  totalItems: number
+  itemsPerPage: number
+  currentPage: number
+  totalPages: number
+  hasNextPage: boolean
+  hasPreviousPage: boolean
+  nextCursor: string | null
+}
+
+interface ApiResponse {
+  success: boolean
+  data: {
+    items: Listing[]
+    pagination: Pagination
+  }
+}
+
+interface Filters {
+  category: string | null
+  material: string | null
+  condition: string | null
+  minPrice: string | null
+  maxPrice: string | null
+  location: string | null
+  search: string | null
 }
 
 export default function ListingsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [data, setData] = useState<{
-    categories: Category[]
-    materialTypes: MaterialType[]
-    listings: Listing[]
-  } | null>(null)
+  const [listings, setListings] = useState<Listing[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [materialTypes, setMaterialTypes] = useState<MaterialType[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const [activeFilters, setActiveFilters] = useState<Filters>({
+    category: searchParams.get('category'),
+    material: searchParams.get('material'),
+    condition: searchParams.get('condition'),
+    minPrice: searchParams.get('minPrice'),
+    maxPrice: searchParams.get('maxPrice'),
+    location: searchParams.get('location'),
+    search: searchParams.get('search')
+  })
+
+  const [pendingFilters, setPendingFilters] = useState<Filters>({
+    category: searchParams.get('category'),
+    material: searchParams.get('material'),
+    condition: searchParams.get('condition'),
+    minPrice: searchParams.get('minPrice'),
+    maxPrice: searchParams.get('maxPrice'),
+    location: searchParams.get('location'),
+    search: searchParams.get('search')
+  })
 
   // Filtre state'leri
-  const [search, setSearch] = useState(searchParams.get('search') || '')
-  const [selectedCategory, setSelectedCategory] = useState(searchParams.get('categoryId') || '')
+  const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '')
   const [selectedMaterial, setSelectedMaterial] = useState(searchParams.get('materialId') || '')
   const [selectedCondition, setSelectedCondition] = useState(searchParams.get('condition') || '')
   const [minPrice, setMinPrice] = useState(searchParams.get('minPrice') || '')
@@ -59,93 +122,208 @@ export default function ListingsPage() {
   const [location, setLocation] = useState(searchParams.get('location') || '')
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [sortBy, setSortBy] = useState(searchParams.get('sortBy') || 'newest')
-  const [currentImageIndices, setCurrentImageIndices] = useState<{ [key: string]: number }>({})
+  const [currentImageIndexes, setCurrentImageIndexes] = useState<Record<string, number>>({})
 
-  const fetchListings = async () => {
+  const [pendingSortBy, setPendingSortBy] = useState(searchParams.get('sortBy') || 'newest')
+
+  const observer = useRef<IntersectionObserver | null>(null)
+  const lastListingElementRef = useCallback((node: Element | null) => {
+    if (loading || loadingMore) return
+    if (observer.current) observer.current.disconnect()
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore) {
+        setCurrentPage(prev => prev + 1)
+      }
+    })
+    if (node) observer.current.observe(node)
+  }, [loading, loadingMore, hasMore])
+
+  const fetchListings = async (page: number, filters = activeFilters, isLoadMore = false) => {
     try {
-      const params = new URLSearchParams()
-      if (search) params.append('search', search)
-      if (selectedCategory) params.append('categoryId', selectedCategory)
-      if (selectedMaterial) params.append('materialId', selectedMaterial)
-      if (selectedCondition) params.append('condition', selectedCondition)
-      if (minPrice) params.append('minPrice', minPrice)
-      if (maxPrice) params.append('maxPrice', maxPrice)
-      if (location) params.append('location', location)
-      if (sortBy) params.append('sortBy', sortBy)
-
-      const response = await fetch(`/api/listings?${params.toString()}`)
-      const result = await response.json()
-
-      if (!result.success) {
-        throw new Error(result.message)
+      if (!isLoadMore) {
+        setLoading(true);
       }
 
-      setData(result.data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Bir hata oluştu')
+      // URL parametrelerini oluştur
+      const params = new URLSearchParams();
+      params.append('page', page.toString());
+      params.append('sortBy', pendingSortBy);
+
+      // Filtreleri ekle
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== null && value !== '') {
+          // Fiyat değerlerini sayısal formatta gönder
+          if (key === 'minPrice' || key === 'maxPrice') {
+            const numValue = parseFloat(value);
+            if (!isNaN(numValue)) {
+              params.append(key, numValue.toString());
+            }
+          } else {
+            params.append(key, value);
+          }
+        }
+      });
+
+      const response = await fetch(`/api/listings?${params.toString()}`, {
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.message);
+      }
+
+      if (isLoadMore) {
+        setListings(prev => [...prev, ...data.data.items]);
+      } else {
+        setListings(data.data.items);
+        setCategories(data.data.categories);
+        setMaterialTypes(data.data.materialTypes);
+      }
+
+      setTotalPages(data.data.pagination.totalPages);
+      setHasMore(data.data.pagination.hasNextPage);
+      setError(null);
+    } catch (error) {
+      console.error('Fetch listings error:', error);
+      setError('İlanlar yüklenirken bir hata oluştu');
     } finally {
-      setLoading(false)
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // URL'den gelen parametreleri kontrol et ve filtreleri güncelle
+    const urlFilters: Filters = {
+      category: searchParams.get('category'),
+      material: searchParams.get('material'),
+      condition: searchParams.get('condition'),
+      minPrice: searchParams.get('minPrice'),
+      maxPrice: searchParams.get('maxPrice'),
+      location: searchParams.get('location'),
+      search: searchParams.get('search')
+    }
+    
+    setActiveFilters(urlFilters)
+    setPendingFilters(urlFilters)
+    fetchListings(1, urlFilters)
+  }, [searchParams])
+
+  const handleFilter = (key: FilterKey, value: string | null) => {
+    // Kategori, malzeme ve durum filtreleri için direkt güncelleme
+    if (key === 'category' || key === 'material' || key === 'condition') {
+      const newFilters = {
+        ...activeFilters,
+        [key]: activeFilters[key] === value ? null : value // Eğer aynı değere tıklandıysa null yap
+      }
+      setActiveFilters(newFilters)
+      setPendingFilters(newFilters)
+      setCurrentPage(1)
+      fetchListings(1, newFilters)
+    } else {
+      // Diğer filtreler için pending state'i kullan
+      setPendingFilters(prev => ({
+        ...prev,
+        [key]: value
+      }))
     }
   }
 
-  useEffect(() => {
-    fetchListings()
-  }, [search, selectedCategory, selectedMaterial, selectedCondition, minPrice, maxPrice, location, sortBy])
+  const applyAllFilters = () => {
+    const newFilters = {
+      ...activeFilters,
+      ...pendingFilters
+    }
+    setActiveFilters(newFilters)
+    setSortBy(pendingSortBy)
+    setCurrentPage(1)
+    fetchListings(1, newFilters)
+  }
 
-  const handleFilter = () => {
-    const params = new URLSearchParams()
-    if (search) params.append('search', search)
-    if (selectedCategory) params.append('categoryId', selectedCategory)
-    if (selectedMaterial) params.append('materialId', selectedMaterial)
-    if (selectedCondition) params.append('condition', selectedCondition)
-    if (minPrice) params.append('minPrice', minPrice)
-    if (maxPrice) params.append('maxPrice', maxPrice)
-    if (location) params.append('location', location)
-    if (sortBy) params.append('sortBy', sortBy)
-
-    router.push(`/listings?${params.toString()}`)
+  const handleSort = (value: string) => {
+    setPendingSortBy(value)
+    setSortBy(value)
+    setCurrentPage(1)
+    fetchListings(1, activeFilters)
   }
 
   const clearFilters = () => {
-    setSearch('')
-    setSelectedCategory('')
-    setSelectedMaterial('')
-    setSelectedCondition('')
-    setMinPrice('')
-    setMaxPrice('')
-    setLocation('')
+    const emptyFilters: Filters = {
+      category: null,
+      material: null,
+      condition: null,
+      minPrice: null,
+      maxPrice: null,
+      location: null,
+      search: null
+    }
+    setActiveFilters(emptyFilters)
+    setPendingFilters(emptyFilters)
+    setPendingSortBy('newest')
     setSortBy('newest')
-    router.push('/listings')
+    fetchListings(1, emptyFilters)
   }
 
   const nextImage = (listingId: string, totalImages: number) => {
-    setCurrentImageIndices((prev) => ({
+    setCurrentImageIndexes(prev => ({
       ...prev,
-      [listingId]: ((prev[listingId] || 0) + 1) % totalImages
+      [listingId]: ((prev[listingId] || 0) + 1) % totalImages,
     }))
   }
 
   const previousImage = (listingId: string, totalImages: number) => {
-    setCurrentImageIndices((prev) => ({
+    setCurrentImageIndexes(prev => ({
       ...prev,
-      [listingId]: ((prev[listingId] || 0) - 1 + totalImages) % totalImages
+      [listingId]: ((prev[listingId] || 0) - 1 + totalImages) % totalImages,
     }))
   }
 
   const goToImage = (listingId: string, index: number) => {
-    setCurrentImageIndices((prev) => ({
+    setCurrentImageIndexes(prev => ({
       ...prev,
       [listingId]: index
     }))
   }
 
-  if (loading) {
+  // Fiyat filtresi için özel fonksiyon
+  const handlePriceFilter = (key: 'minPrice' | 'maxPrice', value: string) => {
+    const newFilters = { ...activeFilters };
+    const numValue = value ? parseFloat(value) : null;
+    
+    if (numValue !== null && !isNaN(numValue)) {
+      newFilters[key] = numValue.toString();
+      
+      // Min fiyat, max fiyattan büyükse max fiyatı güncelle
+      if (key === 'minPrice' && newFilters.maxPrice) {
+        const maxPrice = parseFloat(newFilters.maxPrice);
+        if (numValue > maxPrice) {
+          newFilters.maxPrice = numValue.toString();
+        }
+      }
+      // Max fiyat, min fiyattan küçükse min fiyatı güncelle
+      if (key === 'maxPrice' && newFilters.minPrice) {
+        const minPrice = parseFloat(newFilters.minPrice);
+        if (numValue < minPrice) {
+          newFilters.minPrice = numValue.toString();
+        }
+      }
+    } else {
+      newFilters[key] = null;
+    }
+
+    setActiveFilters(newFilters);
+    fetchListings(1, newFilters);
+  };
+
+  if (loading && listings.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 py-12">
-        <div className="container mx-auto px-4">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Yükleniyor...</p>
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+        <div className="container mx-auto px-4 pt-24 pb-12">
+          <div className="flex justify-center items-center min-h-[400px]">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
           </div>
         </div>
       </div>
@@ -154,336 +332,309 @@ export default function ListingsPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 py-12">
-        <div className="container mx-auto px-4">
-          <div className="text-center">
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded inline-block">
-              {error}
-            </div>
-          </div>
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+        <div className="container mx-auto px-4 pt-24 pb-12">
+          <div className="text-center text-red-600">{error}</div>
         </div>
       </div>
     )
   }
 
-  if (!data) return null
-
   return (
-    <div className="min-h-screen bg-gray-50 pt-24">
-      <div className="container mx-auto px-4">
-        {/* Arama ve Filtreler */}
-        <div className="bg-white rounded-xl shadow-md mb-8">
-          <div className="p-4">
-            <div className="flex items-center justify-between mb-4">
-              <div className="relative flex-grow max-w-2xl">
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="İlan başlığı veya açıklama ara..."
-                  className="w-full pl-12 pr-4 py-3 rounded-lg border-gray-200 focus:border-green-500 focus:ring-green-500"
-                />
-                <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
-                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 py-8">
+        {/* Sonuç Sayısı ve Filtreler Başlığı */}
+        <div className="bg-white rounded-lg shadow-sm p-4 mb-6 mt-16">
+          <div className="flex flex-col">
+            <h1 className="text-2xl font-semibold text-gray-900 mb-2">
+              {activeFilters.category ? categories.find(c => c.id === activeFilters.category)?.name : 'Tüm İlanlar'}
+            </h1>
+            {(activeFilters.material || activeFilters.condition) && (
+              <p className="text-lg text-gray-600">
+                {activeFilters.material && `${materialTypes.find(m => m.id === activeFilters.material)?.name}`}
+                {activeFilters.material && activeFilters.condition && ' • '}
+                {activeFilters.condition && `${activeFilters.condition === 'NEW' ? 'Yeni' : 'Kullanılmış'}`}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex">
+          {/* Sol Panel - Filtreler */}
+          <div className="w-64 bg-white border-r border-gray-100 p-4 sticky top-[72px] h-[calc(100vh-72px)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+            <div className="space-y-4">
+              {/* Kategoriler */}
+              <div>
+                <h3 className="text-sm font-medium text-gray-900 mb-2">Kategoriler</h3>
+                <div className="space-y-1">
+                  {categories.map((category) => (
+                    <button
+                      key={category.id}
+                      onClick={() => handleFilter('category', category.id)}
+                      className={`w-full text-left px-2 py-1.5 rounded-md text-sm transition-colors ${
+                        pendingFilters.category === category.id
+                          ? 'bg-green-50 text-green-700 font-medium'
+                          : 'text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {category.name}
+                      <span className="float-right text-xs text-gray-400">
+                        ({category._count?.listings || 0})
+                      </span>
+                    </button>
+                  ))}
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsFilterOpen(!isFilterOpen)}
-                className="ml-4 px-4 py-3 text-gray-600 hover:text-gray-800 font-medium flex items-center space-x-2 border rounded-lg hover:bg-gray-50 transition-colors duration-300"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                </svg>
-                <span>Filtreler</span>
-              </button>
-            </div>
 
-            {/* Detaylı Filtreler */}
-            <div className={`grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 transition-all duration-300 ${isFilterOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
-              {/* Kategori */}
+              {/* Malzeme */}
               <div>
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full rounded-lg border-gray-200 focus:border-green-500 focus:ring-green-500 text-sm"
-                >
-                  <option value="">Tüm Kategoriler</option>
-                  {data?.categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Malzeme Tipi */}
-              <div>
-                <select
-                  value={selectedMaterial}
-                  onChange={(e) => setSelectedMaterial(e.target.value)}
-                  className="w-full rounded-lg border-gray-200 focus:border-green-500 focus:ring-green-500 text-sm"
-                >
-                  <option value="">Tüm Malzemeler</option>
-                  {data?.materialTypes.map((material) => (
-                    <option key={material.id} value={material.id}>
+                <h3 className="text-sm font-medium text-gray-900 mb-2">Malzeme</h3>
+                <div className="space-y-1">
+                  {materialTypes.map((material) => (
+                    <button
+                      key={material.id}
+                      onClick={() => handleFilter('material', material.id)}
+                      className={`w-full text-left px-2 py-1.5 rounded-md text-sm transition-colors ${
+                        pendingFilters.material === material.id
+                          ? 'bg-green-50 text-green-700 font-medium'
+                          : 'text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
                       {material.name}
-                    </option>
+                      <span className="float-right text-xs text-gray-400">
+                        ({material._count?.listings || 0})
+                      </span>
+                    </button>
                   ))}
-                </select>
+                </div>
               </div>
 
               {/* Durum */}
               <div>
-                <select
-                  value={selectedCondition}
-                  onChange={(e) => setSelectedCondition(e.target.value)}
-                  className="w-full rounded-lg border-gray-200 focus:border-green-500 focus:ring-green-500 text-sm"
-                >
-                  <option value="">Tüm Durumlar</option>
-                  <option value="NEW">Yeni</option>
-                  <option value="USED">Kullanılmış</option>
-                </select>
+                <h3 className="text-sm font-medium text-gray-900 mb-2">Durum</h3>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => handleFilter('condition', 'NEW')}
+                    className={`w-full text-left px-2 py-1.5 rounded-md text-sm transition-colors ${
+                      pendingFilters.condition === 'NEW'
+                        ? 'bg-green-50 text-green-700 font-medium'
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    Yeni
+                  </button>
+                  <button
+                    onClick={() => handleFilter('condition', 'USED')}
+                    className={`w-full text-left px-2 py-1.5 rounded-md text-sm transition-colors ${
+                      pendingFilters.condition === 'USED'
+                        ? 'bg-green-50 text-green-700 font-medium'
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    Kullanılmış
+                  </button>
+                </div>
               </div>
 
               {/* Fiyat Aralığı */}
-              <div className="flex space-x-2">
-                <input
-                  type="number"
-                  value={minPrice}
-                  onChange={(e) => setMinPrice(e.target.value)}
-                  placeholder="Min ₺"
-                  className="w-full rounded-lg border-gray-200 focus:border-green-500 focus:ring-green-500 text-sm"
-                />
-                <input
-                  type="number"
-                  value={maxPrice}
-                  onChange={(e) => setMaxPrice(e.target.value)}
-                  placeholder="Max ₺"
-                  className="w-full rounded-lg border-gray-200 focus:border-green-500 focus:ring-green-500 text-sm"
-                />
+              <div>
+                <h3 className="text-sm font-medium text-gray-900 mb-3">Fiyat Aralığı</h3>
+                <div className="space-y-2">
+                  <input
+                    type="number"
+                    placeholder="Min Fiyat"
+                    value={pendingFilters.minPrice || ''}
+                    onChange={(e) => handleFilter('minPrice', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Max Fiyat"
+                    value={pendingFilters.maxPrice || ''}
+                    onChange={(e) => handleFilter('maxPrice', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+                  />
+                </div>
               </div>
 
               {/* Konum */}
               <div>
+                <h3 className="text-sm font-medium text-gray-900 mb-3">Konum</h3>
                 <input
                   type="text"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="Konum"
-                  className="w-full rounded-lg border-gray-200 focus:border-green-500 focus:ring-green-500 text-sm"
+                  placeholder="Şehir ara..."
+                  value={pendingFilters.location || ''}
+                  onChange={(e) => handleFilter('location', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
                 />
               </div>
-            </div>
 
-            {/* Filtre Butonları */}
-            <div className={`flex justify-end space-x-3 mt-4 transition-all duration-300 ${isFilterOpen ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>
+              {/* Uygula Butonu */}
               <button
-                onClick={clearFilters}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 text-sm font-medium transition-colors duration-300"
+                onClick={applyAllFilters}
+                className="w-full bg-green-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-green-700 transition-colors"
               >
-                Filtreleri Temizle
+                Filtreleri Uygula
               </button>
-              <button
-                onClick={handleFilter}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium transition-colors duration-300 shadow-sm hover:shadow"
-              >
-                Uygula
-              </button>
-            </div>
-          </div>
-        </div>
 
-        {/* İlanlar Başlığı ve Sıralama */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">
-            İlanlar
-            {data?.listings.length > 0 && (
-              <span className="ml-2 text-sm font-normal text-gray-500">
-                ({data.listings.length} ilan)
-              </span>
-            )}
-          </h1>
-          <select
-            className="border-gray-200 rounded-lg focus:border-green-500 focus:ring-green-500 text-sm"
-            value={sortBy}
-            onChange={(e) => {
-              setSortBy(e.target.value)
-              const params = new URLSearchParams(window.location.search)
-              params.set('sortBy', e.target.value)
-              router.push(`/listings?${params.toString()}`)
-            }}
-          >
-            <option value="newest">En Yeni</option>
-            <option value="oldest">En Eski</option>
-            <option value="price_asc">Fiyat (Düşükten Yükseğe)</option>
-            <option value="price_desc">Fiyat (Yüksekten Düşüğe)</option>
-          </select>
-        </div>
-
-        {/* İlanlar */}
-        {data?.listings.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-md p-8 text-center">
-            <div className="max-w-md mx-auto">
-              <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M12 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p className="text-gray-600 mb-4">Bu kriterlere uygun ilan bulunamadı.</p>
-              <button
-                onClick={clearFilters}
-                className="text-green-600 hover:text-green-700 font-medium"
-              >
-                Filtreleri temizle
-              </button>
+              {/* Filtreleri Temizle */}
+              {Object.values(activeFilters).some(value => value !== null) && (
+                <button
+                  onClick={clearFilters}
+                  className="w-full px-3 py-2 text-sm text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors"
+                >
+                  Filtreleri Temizle
+                </button>
+              )}
             </div>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {data?.listings.map((listing) => (
-              <div key={listing.id} className="group bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
-                {/* İlan Resmi */}
-                <div className="relative w-full pt-[56.25%]">
-                  {listing.images && listing.images.length > 0 ? (
-                    <div className="absolute inset-0">
-                      <div className="relative w-full h-full">
-                        <Image
-                          src={listing.images[currentImageIndices[listing.id] || 0]}
-                          alt={listing.title}
-                          fill
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                          className="object-cover rounded-t-xl"
-                          priority
-                        />
+
+          {/* Ana İçerik */}
+          <div className="flex-1 min-h-screen bg-gray-50">
+            <div className="max-w-[2000px] mx-auto px-6">
+              {/* Üst Bar */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex flex-col">
+                  <h1 className="text-2xl font-semibold text-gray-900">İlanlar</h1>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {activeFilters.category && categories.find(c => c.id === activeFilters.category)?.name}
+                    {activeFilters.material && ` • ${materialTypes.find(m => m.id === activeFilters.material)?.name}`}
+                    {activeFilters.condition && ` • ${activeFilters.condition === 'NEW' ? 'Yeni' : 'Kullanılmış'}`}
+                    {` (${listings.length} sonuç)`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => handleSort(e.target.value)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  >
+                    <option value="newest">En Yeni</option>
+                    <option value="oldest">En Eski</option>
+                    <option value="priceAsc">En Düşük Fiyat</option>
+                    <option value="priceDesc">En Yüksek Fiyat</option>
+                  </select>
+                  <button
+                    onClick={clearFilters}
+                    className="px-4 py-2 text-red-600 hover:text-red-700 transition-colors"
+                  >
+                    Temizle
+                  </button>
+                </div>
+              </div>
+
+              {/* İlan Listesi */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
+                {listings.map((listing, index) => (
+                  <motion.div
+                    key={listing.id}
+                    ref={index === listings.length - 1 ? lastListingElementRef : null}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: index * 0.1 }}
+                    className="group bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300"
+                  >
+                    <div className="relative aspect-[4/3]">
+                      <Link href={`/listings/${listing.id}`}>
+                        <div className="relative w-full h-full overflow-hidden">
+                          <ListingImage
+                            src={listing.images[currentImageIndexes[listing.id] || 0]}
+                            alt={listing.title}
+                            priority={index < 4}
+                            className="transform transition-transform duration-500 group-hover:scale-110"
+                          />
+                        </div>
+                      </Link>
+
+                      {/* Durum Etiketi */}
+                      <div className="absolute top-2 left-2">
+                        <span className={`px-2.5 py-1 text-xs font-medium rounded-full backdrop-blur-sm ${
+                          listing.condition === 'NEW'
+                            ? 'bg-green-100/90 text-green-800'
+                            : 'bg-yellow-100/90 text-yellow-800'
+                        }`}>
+                          {listing.condition === 'NEW' ? 'Yeni' : 'Kullanılmış'}
+                        </span>
                       </div>
+
                       {listing.images.length > 1 && (
                         <>
                           <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              previousImage(listing.id, listing.images.length);
-                            }}
-                            className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                            onClick={() => previousImage(listing.id, listing.images.length)}
+                            className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/30 text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-black/50"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
                             </svg>
                           </button>
                           <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              nextImage(listing.id, listing.images.length);
-                            }}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                            onClick={() => nextImage(listing.id, listing.images.length)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/30 text-white backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-black/50"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                             </svg>
                           </button>
-                          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex space-x-1 z-10">
-                            {listing.images.map((_, index) => (
-                              <button
-                                key={index}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  goToImage(listing.id, index);
-                                }}
-                                className={`w-1.5 h-1.5 rounded-full transition-all ${
-                                  index === (currentImageIndices[listing.id] || 0)
-                                    ? 'bg-white scale-125'
-                                    : 'bg-white/60 hover:bg-white/80'
-                                }`}
-                              />
-                            ))}
-                          </div>
                         </>
                       )}
                     </div>
-                  ) : (
-                    <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
-                      <svg className="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                  )}
-                  <div className="absolute top-2 right-2 z-10">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full shadow-sm ${
-                      listing.condition === 'NEW' 
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {listing.condition === 'NEW' ? 'Yeni' : 'Kullanılmış'}
-                    </span>
-                  </div>
-                </div>
 
-                {/* İlan Detayları */}
-                <Link href={`/listings/${listing.id}`}>
-                  <div className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-lg font-bold text-green-600">
+                    <div className="p-4">
+                      <Link href={`/listings/${listing.id}`}>
+                        <h3 className="font-medium text-gray-900 mb-1 line-clamp-2 hover:text-green-600 transition-colors">
+                          {listing.title}
+                        </h3>
+                      </Link>
+                      <div className="text-red-600 font-bold mb-2">
                         {listing.price.toLocaleString('tr-TR', {
                           style: 'currency',
                           currency: 'TRY',
                         })}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {new Date(listing.createdAt).toLocaleDateString('tr-TR')}
-                      </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm text-gray-500">
+                        <span>{listing.location}</span>
+                        <span>{format(new Date(listing.createdAt), 'd MMM', { locale: tr })}</span>
+                      </div>
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1 line-clamp-1 group-hover:text-green-600 transition-colors">
-                      {listing.title}
-                    </h3>
-                    <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                      {listing.description}
-                    </p>
-                    <div className="flex flex-wrap gap-2 text-xs">
-                      <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
-                        {listing.category.name}
-                      </span>
-                      <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
-                        {listing.material.name}
-                      </span>
-                      <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full">
-                        {listing.location}
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-
-                {/* İlan Kartı Alt Kısmı - Satıcı Bilgileri */}
-                <div className="mt-4 pt-4 border-t border-gray-100">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100">
-                      {listing.seller.profileImage ? (
-                        <Image
-                          src={listing.seller.profileImage}
-                          alt={listing.seller.name}
-                          width={40}
-                          height={40}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-green-100">
-                          <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                          </svg>
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{listing.seller.name}</p>
-                      {listing.seller.company && (
-                        <p className="text-xs text-gray-500">{listing.seller.company}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                  </motion.div>
+                ))}
               </div>
-            ))}
+
+              {/* Yükleniyor */}
+              {loading && (
+                <div className="flex justify-center my-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                </div>
+              )}
+
+              {/* Hata Mesajı */}
+              {error && (
+                <div className="text-center text-red-600 my-8 bg-white p-4 rounded-lg shadow-sm">
+                  {error}
+                </div>
+              )}
+
+              {/* Sonuç Bulunamadı */}
+              {!loading && !error && listings.length === 0 && (
+                <div className="text-center py-12 bg-white rounded-lg shadow-sm">
+                  <div className="mb-4">
+                    <svg className="w-16 h-16 text-gray-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">İlan Bulunamadı</h3>
+                  <p className="text-gray-500 mb-4">Arama kriterlerinize uygun ilan bulunamadı.</p>
+                  <button
+                    onClick={clearFilters}
+                    className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-xl text-white bg-red-600 hover:bg-red-700 transition-colors"
+                  >
+                    Filtreleri Temizle
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   )

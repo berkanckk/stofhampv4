@@ -22,11 +22,15 @@ interface Listing {
   description: string
   price: number
   condition: 'NEW' | 'USED'
+  expiresAt: string | null
   images: string[]
   location: string
   category: Category
   material: MaterialType
   createdAt: string
+  _count: {
+    favorites: number
+  }
 }
 
 export default function MyListingsPage() {
@@ -106,22 +110,47 @@ export default function MyListingsPage() {
     }
   }
 
+  const handleStatusChange = async (listingId: string, newStatus: string) => {
+    try {
+      const response = await fetch(`/api/listings/${listingId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        // İlan listesini güncelle
+        setListings(listings.map(listing =>
+          listing.id === listingId
+            ? { ...listing, status: newStatus as any }
+            : listing
+        ))
+      }
+    } catch (error) {
+      console.error('Update status error:', error)
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pt-24 pb-12">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pt-20 pb-10">
       <div className="container mx-auto px-4">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           {/* Üst Başlık Alanı */}
-          <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
-            <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+          <div className="bg-white rounded-xl shadow-sm p-5 mb-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">İlanlarım</h1>
-                <p className="text-gray-500 mt-1">Yayınladığınız tüm ilanları buradan yönetebilirsiniz</p>
+                <h1 className="text-2xl font-bold text-gray-900">İlanlarım</h1>
+                <p className="text-gray-500 mt-1 text-sm">Yayınladığınız tüm ilanları buradan yönetebilirsiniz</p>
               </div>
               <Link
                 href="/listings/create"
-                className="inline-flex items-center px-6 py-3 bg-green-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-300 transform hover:scale-105"
+                className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-300 transform hover:scale-105"
               >
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
                 </svg>
                 Yeni İlan Ekle
@@ -130,7 +159,7 @@ export default function MyListingsPage() {
           </div>
 
           {error && (
-            <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-8 rounded-lg">
+            <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-lg">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
                   <svg className="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -145,34 +174,34 @@ export default function MyListingsPage() {
           )}
 
           {listings.length === 0 ? (
-            <div className="bg-white rounded-xl shadow-sm p-12 text-center">
-              <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
-                <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-white rounded-xl shadow-sm p-8 text-center">
+              <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Henüz İlanınız Bulunmuyor</h3>
-              <p className="text-gray-500 mb-6">İlk ilanınızı oluşturarak alıcılarla buluşun</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Henüz İlanınız Bulunmuyor</h3>
+              <p className="text-gray-500 text-sm mb-4">İlk ilanınızı oluşturarak alıcılarla buluşun</p>
               <Link
                 href="/listings/create"
-                className="inline-flex items-center px-6 py-3 bg-green-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-300"
+                className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-300"
               >
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
                 </svg>
                 İlk İlanınızı Oluşturun
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {listings.map(listing => (
                 <div
                   key={listing.id}
-                  className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300"
+                  className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300"
                 >
                   {/* İlan Resmi */}
                   <Link href={`/listings/${listing.id}`} className="block relative">
-                    <div className="relative w-full pt-[66.67%] bg-gray-200 group">
+                    <div className="relative w-full pt-[75%] bg-gray-100 group">
                       {listing.images.length > 0 ? (
                         <div className="absolute inset-0">
                           <Image
@@ -182,110 +211,93 @@ export default function MyListingsPage() {
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                             priority
                             className="object-cover object-center transform group-hover:scale-105 transition-transform duration-300"
-                            style={{ imageRendering: 'crisp-edges' }}
                           />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                          <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                           {listing.images.length > 1 && (
-                            <div className="absolute bottom-3 right-3 bg-black/60 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium backdrop-blur-sm">
-                              +{listing.images.length - 1} resim
+                            <div className="absolute bottom-2 right-2 bg-black/60 text-white px-2 py-1 rounded-md text-xs font-medium backdrop-blur-sm">
+                              +{listing.images.length - 1}
                             </div>
                           )}
                         </div>
                       ) : (
-                        <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-                          <div className="text-center">
-                            <svg className="w-12 h-12 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            <span className="text-sm text-gray-500">Resim yok</span>
-                          </div>
+                        <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+                          <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
                         </div>
                       )}
                     </div>
                   </Link>
 
                   {/* İlan Bilgileri */}
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-4">
+                  <div className="p-4">
+                    <div className="flex items-center justify-between mb-2">
                       <Link href={`/listings/${listing.id}`}>
-                        <h3 className="text-xl font-semibold text-gray-900 hover:text-green-600 transition-colors duration-300 line-clamp-1">
+                        <h3 className="text-base font-semibold text-gray-900 hover:text-green-600 transition-colors duration-300 line-clamp-1">
                           {listing.title}
                         </h3>
                       </Link>
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      <span className={`px-2 py-1 rounded-md text-xs font-medium ${
                         listing.condition === 'NEW' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-yellow-100 text-yellow-800'
+                          ? 'bg-green-50 text-green-700' 
+                          : 'bg-yellow-50 text-yellow-700'
                       }`}>
                         {listing.condition === 'NEW' ? 'Yeni' : 'Kullanılmış'}
                       </span>
                     </div>
 
-                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                    <p className="text-gray-600 text-sm mb-3 line-clamp-2">
                       {listing.description}
                     </p>
 
-                    <div className="grid grid-cols-2 gap-4 mb-6">
-                      <div className="flex items-center text-sm text-gray-500">
-                        <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      <div className="flex items-center text-xs text-gray-500">
+                        <svg className="w-3.5 h-3.5 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                         </svg>
                         {listing.category.name}
                       </div>
-                      <div className="flex items-center text-sm text-gray-500">
-                        <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="flex items-center text-xs text-gray-500">
+                        <svg className="w-3.5 h-3.5 mr-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                         {listing.location}
-                      </div>
-                      <div className="flex items-center text-sm text-gray-500">
-                        <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                        </svg>
-                        {listing.material.name}
-                      </div>
-                      <div className="flex items-center text-sm text-gray-500">
-                        <svg className="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        {new Date(listing.createdAt).toLocaleDateString('tr-TR')}
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <span className="text-2xl font-bold text-green-600">
+                      <span className="text-lg font-bold text-green-600">
                         {listing.price.toLocaleString('tr-TR', {
                           style: 'currency',
                           currency: 'TRY',
                         })}
                       </span>
-                      <div className="flex space-x-2">
+                      <div className="flex space-x-1">
                         <Link
                           href={`/listings/${listing.id}/edit`}
-                          className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors duration-300"
+                          className="p-2 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-colors duration-300"
+                          title="Düzenle"
                         >
-                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                           </svg>
-                          Düzenle
                         </Link>
                         <button
                           onClick={() => handleDelete(listing.id)}
                           disabled={deleteLoading === listing.id}
-                          className="inline-flex items-center px-4 py-2 bg-red-100 text-red-700 text-sm font-medium rounded-lg hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-300"
+                          className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors duration-300"
+                          title="Sil"
                         >
                           {deleteLoading === listing.id ? (
-                            <svg className="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+                            <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                             </svg>
                           ) : (
-                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
                           )}
-                          {deleteLoading === listing.id ? 'Siliniyor...' : 'Sil'}
                         </button>
                       </div>
                     </div>

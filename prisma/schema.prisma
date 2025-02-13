@@ -29,6 +29,7 @@ model User {
   sentMessages     Message[]       @relation("SentMessages")
   receivedMessages Message[]       @relation("ReceivedMessages")
   conversations    Conversation[]  @relation("UserConversations")
+  favorites     Favorite[]
 }
 
 enum UserType {
@@ -42,6 +43,7 @@ model Listing {
   description String
   price       Float
   condition   Condition
+  expiresAt   DateTime?
   category    Category      @relation(fields: [categoryId], references: [id])
   categoryId  String
   material    MaterialType  @relation(fields: [materialId], references: [id])
@@ -53,6 +55,7 @@ model Listing {
   conversations Conversation[]
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
+  favorites   Favorite[]
 }
 
 enum Condition {
@@ -100,4 +103,15 @@ model Message {
   isRead         Boolean      @default(false)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  listing   Listing  @relation(fields: [listingId], references: [id])
+  listingId String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, listingId])
 }

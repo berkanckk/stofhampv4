@@ -184,10 +184,7 @@ export default function MessagesPage() {
                           )}
                           {conversation.messages.some(m => !m.isRead && m.senderId !== session?.user?.id) && (
                             <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center animate-bounce shadow-lg border-2 border-white">
-                              {conversation.messages.filter(m => {
-                                console.log('Message:', m);
-                                return !m.isRead && m.senderId !== session?.user?.id;
-                              }).length}
+                              {conversation.messages.filter(m => !m.isRead && m.senderId !== session?.user?.id).length}
                             </span>
                           )}
                         </div>

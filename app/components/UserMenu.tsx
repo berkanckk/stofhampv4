@@ -55,6 +55,13 @@ export default function UserMenu({ session, linkStyle, unreadCount }: UserMenuPr
             İlanlarım
           </Link>
           <Link
+            href="/favorites"
+            className="block px-4 py-2 text-gray-700 hover:bg-gray-100 text-base transition-colors duration-300"
+            onClick={() => setIsOpen(false)}
+          >
+            Favorilerim
+          </Link>
+          <Link
             href="/messages"
             className="block px-4 py-2 text-gray-700 hover:bg-gray-100 text-base transition-colors duration-300 relative"
             onClick={() => setIsOpen(false)}

@@ -1,44 +1,73 @@
-import { getServerSession } from 'next-auth'
-import { PrismaClient } from '@prisma/client'
-import { authOptions } from '@/app/api/auth/[...nextauth]/options'
-
-const prisma = new PrismaClient()
+import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/options';
+import prisma from '@/app/lib/prismadb';
+import { invalidateMessagesCache } from '../../conversations/[id]/messages/route';
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions)
-    const { conversationId } = await request.json()
-
+    const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
-      return Response.json(
+      return NextResponse.json(
         { success: false, message: 'Oturum açmanız gerekiyor' },
         { status: 401 }
-      )
+      );
     }
 
-    // Sohbetteki okunmamış mesajları okundu olarak işaretle
+    const body = await request.json();
+    const { conversationId } = body;
+
+    if (!conversationId) {
+      return NextResponse.json(
+        { success: false, message: 'Geçersiz sohbet ID' },
+        { status: 400 }
+      );
+    }
+
+    // Kullanıcının bu sohbete erişim yetkisi var mı kontrol et
+    const conversation = await prisma.conversation.findFirst({
+      where: {
+        id: conversationId,
+        users: {
+          some: {
+            id: session.user.id
+          }
+        }
+      }
+    });
+
+    if (!conversation) {
+      return NextResponse.json(
+        { success: false, message: 'Sohbet bulunamadı' },
+        { status: 404 }
+      );
+    }
+
+    // Okunmamış mesajları okundu olarak işaretle
     await prisma.message.updateMany({
       where: {
         conversationId,
         receiverId: session.user.id,
-        isRead: false,
+        isRead: false
       },
       data: {
-        isRead: true,
-      },
-    })
+        isRead: true
+      }
+    });
 
-    return Response.json({
+    // Cache'i temizle
+    await invalidateMessagesCache(conversationId);
+
+    return NextResponse.json({
       success: true,
-      message: 'Mesajlar okundu olarak işaretlendi',
-    })
+      message: 'Mesajlar okundu olarak işaretlendi'
+    });
+
   } catch (error) {
-    console.error('Mark messages as read error:', error)
-    return Response.json(
+    console.error('Mark messages as read error:', error);
+    return NextResponse.json(
       { success: false, message: 'Mesajlar işaretlenirken bir hata oluştu' },
       { status: 500 }
-    )
-  } finally {
-    await prisma.$disconnect()
+    );
   }
 } 

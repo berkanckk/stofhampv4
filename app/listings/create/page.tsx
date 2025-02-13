@@ -46,15 +46,20 @@ export default function CreateListingPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch('/api/listings')
-        const result = await response.json()
+        const [categoriesResponse, materialsResponse] = await Promise.all([
+          fetch('/api/categories'),
+          fetch('/api/materials')
+        ])
 
-        if (!result.success) {
-          throw new Error(result.message)
+        const categoriesResult = await categoriesResponse.json()
+        const materialsResult = await materialsResponse.json()
+
+        if (!categoriesResult.success || !materialsResult.success) {
+          throw new Error('Veriler alınamadı')
         }
 
-        setCategories(result.data.categories)
-        setMaterialTypes(result.data.materialTypes)
+        setCategories(categoriesResult.data)
+        setMaterialTypes(materialsResult.data)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Veriler yüklenirken bir hata oluştu')
       }
@@ -110,7 +115,7 @@ export default function CreateListingPage() {
     setError(null)
 
     try {
-      const response = await fetch('/api/listings/create', {
+      const response = await fetch('/api/listings', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

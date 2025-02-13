@@ -1,14 +1,16 @@
-import './globals.css'
+import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+import './globals.css'
 import { Providers } from './providers'
 import Header from './components/Header'
 import Footer from './components/Footer'
+import { Toaster } from 'react-hot-toast'
 
 const inter = Inter({ subsets: ['latin'] })
 
-export const metadata = {
-  title: 'Stofhamp - Stok Fazlası Ham Madde Pazarı',
-  description: 'Üretici firmalar için sürdürülebilir stok fazlası çözümleri',
+export const metadata: Metadata = {
+  title: 'Stofhamp - İkinci El Eşya Alım Satım',
+  description: 'İkinci el eşyalarınızı güvenle alın ve satın',
 }
 
 export default function RootLayout({
@@ -20,13 +22,12 @@ export default function RootLayout({
     <html lang="tr">
       <body className={inter.className}>
         <Providers>
-          <div className="flex flex-col min-h-screen relative">
-            <Header />
-            <main className="flex-1 relative z-0 bg-gray-50">
-              {children}
-            </main>
-            <Footer />
-          </div>
+          <Header />
+          <main className="min-h-screen">
+            {children}
+          </main>
+          <Footer />
+          <Toaster position="top-right" />
         </Providers>
       </body>
     </html>

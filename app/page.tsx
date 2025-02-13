@@ -32,7 +32,41 @@ export default function Home() {
               <span className="block text-5xl md:text-6xl lg:text-7xl font-light mb-2">Stok Fazlası</span>
               <span className="block text-6xl md:text-7xl lg:text-8xl font-extrabold">Ham Madde Pazarı</span>
             </h1>
-            <div className="flex justify-center">
+            <div className="flex flex-col md:flex-row justify-center items-center gap-4 mb-8">
+              <div className="relative w-full max-w-xl flex gap-2">
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    placeholder="İlan ara..."
+                    id="searchInput"
+                    className="w-full px-6 py-4 text-lg bg-white/90 backdrop-blur-sm rounded-full shadow-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all duration-300"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const searchInput = document.getElementById('searchInput') as HTMLInputElement;
+                        if (searchInput.value) {
+                          window.location.href = `/listings?search=${encodeURIComponent(searchInput.value)}`;
+                        }
+                      }
+                    }}
+                  />
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                    <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    const searchInput = document.getElementById('searchInput') as HTMLInputElement;
+                    if (searchInput.value) {
+                      window.location.href = `/listings?search=${encodeURIComponent(searchInput.value)}`;
+                    }
+                  }}
+                  className="px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-green-600/90 to-green-500/90 rounded-full hover:from-green-500/90 hover:to-green-400/90 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-105"
+                >
+                  Ara
+                </button>
+              </div>
               <Link
                 href={session ? "/listings/create" : "/register"}
                 className="group relative inline-flex items-center justify-center px-12 py-4 text-lg font-semibold text-white transition-all duration-300 ease-in-out bg-gradient-to-r from-green-600/90 to-green-500/90 rounded-full overflow-hidden hover:scale-105 hover:shadow-2xl hover:from-green-500/90 hover:to-green-400/90"

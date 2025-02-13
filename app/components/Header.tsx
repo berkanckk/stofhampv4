@@ -2,19 +2,17 @@
 
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
+import { useSession, signOut } from 'next-auth/react'
 import { usePathname } from 'next/navigation'
 import UserMenu from '@/app/components/UserMenu'
-import { getServerSession } from 'next-auth'
-import { PrismaClient } from '@prisma/client'
-import { authOptions } from '@/app/api/auth/[...nextauth]/options'
+import { useUnreadCount } from '@/app/hooks/useUnreadCount'
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const [unreadCount, setUnreadCount] = useState(0)
+  const { unreadCount } = useUnreadCount()
   const { data: session } = useSession()
   const pathname = usePathname()
   const isHomePage = pathname === '/'
@@ -27,26 +25,6 @@ export default function Header() {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
-
-  useEffect(() => {
-    const checkUnreadMessages = async () => {
-      if (session?.user?.id) {
-        try {
-          const response = await fetch('/api/messages/unread-count')
-          const data = await response.json()
-          if (data.success) {
-            setUnreadCount(data.count)
-          }
-        } catch (error) {
-          console.error('Okunmamış mesaj sayısı alınamadı:', error)
-        }
-      }
-    }
-
-    checkUnreadMessages()
-    const interval = setInterval(checkUnreadMessages, 30000)
-    return () => clearInterval(interval)
-  }, [session])
 
   if (!mounted) {
     return (
