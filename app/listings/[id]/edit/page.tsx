@@ -1,6 +1,14 @@
 import { Suspense } from 'react'
+import type { Viewport } from 'next'
 import EditListingForm from './EditListingForm'
 import { PrismaClient } from '@prisma/client'
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false
+}
 
 const prisma = new PrismaClient()
 

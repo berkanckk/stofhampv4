@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import type { Viewport } from 'next'
 
 interface User {
   id: string
@@ -13,6 +14,13 @@ interface User {
   company: string | null
   userType: 'PERSONAL' | 'BUSINESS'
   profileImage: string | null
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false
 }
 
 export default function ProfilePage() {
