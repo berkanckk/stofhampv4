@@ -69,6 +69,7 @@ function ListingsContent() {
   const [materialTypes, setMaterialTypes] = useState<MaterialType[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isFiltersVisible, setIsFiltersVisible] = useState(false)
   const [activeFilters, setActiveFilters] = useState<Filters>({
     category: searchParams.get('category'),
     material: searchParams.get('material'),
@@ -266,156 +267,132 @@ function ListingsContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
-        {/* Sonuç Sayısı ve Filtreler Başlığı */}
-        <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 mb-4 sm:mb-6 mt-16">
-          <div className="flex flex-col">
-            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">
-              {activeFilters.category ? categories.find(c => c.id === activeFilters.category)?.name : 'Tüm İlanlar'}
-            </h1>
-            {(activeFilters.material || activeFilters.condition) && (
-              <p className="text-base sm:text-lg text-gray-600">
-                {activeFilters.material && `${materialTypes.find(m => m.id === activeFilters.material)?.name}`}
-                {activeFilters.material && activeFilters.condition && ' • '}
-                {activeFilters.condition && `${activeFilters.condition === 'NEW' ? 'Yeni' : 'Kullanılmış'}`}
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="flex flex-col md:flex-row">
-          {/* Sol Panel - Filtreler */}
-          <div className="w-full md:w-64 bg-white border-b md:border-r border-gray-100 p-4 md:sticky md:top-[72px] md:h-[calc(100vh-72px)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-            <div className="space-y-4">
-              {/* Kategoriler */}
-              <div>
-                <h3 className="text-sm font-medium text-gray-900 mb-2">Kategoriler</h3>
-                <div className="space-y-1">
-                  {categories.map((category) => (
-                    <button
-                      key={category.id}
-                      onClick={() => handleFilter('category', category.id)}
-                      className={`w-full text-left px-2 py-1.5 rounded-md text-sm transition-colors ${
-                        pendingFilters.category === category.id
-                          ? 'bg-green-50 text-green-700 font-medium'
-                          : 'text-gray-600 hover:bg-gray-50'
-                      }`}
-                    >
-                      {category.name}
-                      <span className="float-right text-xs text-gray-400">
-                        ({category._count?.listings || 0})
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Malzeme */}
-              <div>
-                <h3 className="text-sm font-medium text-gray-900 mb-2">Malzeme</h3>
-                <div className="space-y-1">
-                  {materialTypes.map((material) => (
-                    <button
-                      key={material.id}
-                      onClick={() => handleFilter('material', material.id)}
-                      className={`w-full text-left px-2 py-1.5 rounded-md text-sm transition-colors ${
-                        pendingFilters.material === material.id
-                          ? 'bg-green-50 text-green-700 font-medium'
-                          : 'text-gray-600 hover:bg-gray-50'
-                      }`}
-                    >
-                      {material.name}
-                      <span className="float-right text-xs text-gray-400">
-                        ({material._count?.listings || 0})
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Durum */}
-              <div>
-                <h3 className="text-sm font-medium text-gray-900 mb-2">Durum</h3>
-                <div className="space-y-1">
-                  <button
-                    onClick={() => handleFilter('condition', 'NEW')}
-                    className={`w-full text-left px-2 py-1.5 rounded-md text-sm transition-colors ${
-                      pendingFilters.condition === 'NEW'
-                        ? 'bg-green-50 text-green-700 font-medium'
-                        : 'text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    Yeni
-                  </button>
-                  <button
-                    onClick={() => handleFilter('condition', 'USED')}
-                    className={`w-full text-left px-2 py-1.5 rounded-md text-sm transition-colors ${
-                      pendingFilters.condition === 'USED'
-                        ? 'bg-green-50 text-green-700 font-medium'
-                        : 'text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    Kullanılmış
-                  </button>
-                </div>
-              </div>
-
-              {/* Fiyat Aralığı */}
-              <div>
-                <h3 className="text-sm font-medium text-gray-900 mb-3">Fiyat Aralığı</h3>
-                <div className="space-y-2">
-                  <input
-                    type="number"
-                    placeholder="Min Fiyat"
-                    value={pendingFilters.minPrice || ''}
-                    onChange={(e) => handleFilter('minPrice', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
-                  />
-                  <input
-                    type="number"
-                    placeholder="Max Fiyat"
-                    value={pendingFilters.maxPrice || ''}
-                    onChange={(e) => handleFilter('maxPrice', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
-                  />
-                </div>
-              </div>
-
-              {/* Konum */}
-              <div>
-                <h3 className="text-sm font-medium text-gray-900 mb-3">Konum</h3>
-                <input
-                  type="text"
-                  placeholder="Şehir ara..."
-                  value={pendingFilters.location || ''}
-                  onChange={(e) => handleFilter('location', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
-                />
-              </div>
-
-              {/* Uygula Butonu */}
+    <div className="min-h-screen bg-gray-50 pt-24 pb-12">
+      <div className="container mx-auto px-4">
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Filtreler */}
+          <div className="w-full lg:w-64">
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              {/* Mobil Filtre Başlığı */}
               <button
-                onClick={applyAllFilters}
-                className="w-full bg-green-600 text-white rounded-lg py-2 text-sm font-medium hover:bg-green-700 transition-colors"
+                onClick={() => setIsFiltersVisible(!isFiltersVisible)}
+                className="w-full flex items-center justify-between lg:hidden mb-2"
               >
-                Filtreleri Uygula
+                <span className="text-lg font-semibold text-gray-900">Filtreler</span>
+                <svg 
+                  className={`w-5 h-5 transition-transform ${isFiltersVisible ? 'rotate-180' : ''}`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
               </button>
 
-              {/* Filtreleri Temizle */}
-              {Object.values(activeFilters).some(value => value !== null) && (
-                <button
-                  onClick={clearFilters}
-                  className="w-full px-3 py-2 text-sm text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors"
-                >
-                  Filtreleri Temizle
-                </button>
-              )}
+              {/* Filtre İçeriği */}
+              <div className={`space-y-6 ${isFiltersVisible ? 'block' : 'hidden lg:block'}`}>
+                {/* Kategoriler */}
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900 mb-2">Kategoriler</h3>
+                  <select
+                    value={activeFilters.category || ''}
+                    onChange={(e) => handleFilter('category', e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md text-sm"
+                  >
+                    <option value="">Tümü</option>
+                    {categories.map(category => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Malzeme Tipleri */}
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900 mb-2">Malzeme Tipi</h3>
+                  <select
+                    value={activeFilters.material || ''}
+                    onChange={(e) => handleFilter('material', e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md text-sm"
+                  >
+                    <option value="">Tümü</option>
+                    {materialTypes.map(material => (
+                      <option key={material.id} value={material.id}>
+                        {material.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Durum */}
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900 mb-2">Durum</h3>
+                  <select
+                    value={activeFilters.condition || ''}
+                    onChange={(e) => handleFilter('condition', e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md text-sm"
+                  >
+                    <option value="">Tümü</option>
+                    <option value="NEW">Yeni</option>
+                    <option value="USED">Kullanılmış</option>
+                  </select>
+                </div>
+
+                {/* Fiyat Aralığı */}
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900 mb-2">Fiyat Aralığı</h3>
+                  <div className="flex space-x-2">
+                    <input
+                      type="number"
+                      placeholder="Min"
+                      value={activeFilters.minPrice || ''}
+                      onChange={(e) => handleFilter('minPrice', e.target.value)}
+                      className="w-1/2 p-2 border border-gray-300 rounded-md text-sm"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Max"
+                      value={activeFilters.maxPrice || ''}
+                      onChange={(e) => handleFilter('maxPrice', e.target.value)}
+                      className="w-1/2 p-2 border border-gray-300 rounded-md text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Konum */}
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900 mb-2">Konum</h3>
+                  <input
+                    type="text"
+                    placeholder="Şehir ara..."
+                    value={activeFilters.location || ''}
+                    onChange={(e) => handleFilter('location', e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-md text-sm"
+                  />
+                </div>
+
+                {/* Filtre Butonları */}
+                <div className="flex flex-col space-y-2">
+                  <button
+                    onClick={applyAllFilters}
+                    className="w-full bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-green-700 transition-colors"
+                  >
+                    Filtreleri Uygula
+                  </button>
+                  <button
+                    onClick={clearFilters}
+                    className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-200 transition-colors"
+                  >
+                    Filtreleri Temizle
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Ana İçerik */}
-          <div className="flex-1 min-h-screen bg-gray-50">
+          {/* İlan Listesi */}
+          <div className="flex-1">
             <div className="max-w-[2000px] mx-auto px-6">
               {/* Üst Bar */}
               <div className="flex items-center justify-between mb-6">
