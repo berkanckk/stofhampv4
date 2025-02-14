@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
@@ -13,11 +13,12 @@ export const metadata: Metadata = {
   description: 'Stok fazlası ham maddelerin alım satım platformu',
   icons: {
     icon: '/favicon.ico',
-  },
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-  },
+  }
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
 }
 
 export default function RootLayout({
