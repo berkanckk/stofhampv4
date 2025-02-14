@@ -7,7 +7,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { format } from 'date-fns'
 import { tr } from 'date-fns/locale'
-import type { Viewport } from 'next'
 
 interface Listing {
   id: string
@@ -30,13 +29,6 @@ interface Favorite {
   id: string
   listing: Listing
   createdAt: string
-}
-
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false
 }
 
 export default function FavoritesPage() {
