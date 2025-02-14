@@ -3,14 +3,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { toast } from 'react-hot-toast'
-import type { Viewport } from 'next'
-
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false
-}
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
