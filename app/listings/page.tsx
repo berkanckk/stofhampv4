@@ -52,24 +52,6 @@ interface Listing {
 
 type FilterKey = 'category' | 'material' | 'condition' | 'minPrice' | 'maxPrice' | 'location' | 'search';
 
-interface Pagination {
-  totalItems: number
-  itemsPerPage: number
-  currentPage: number
-  totalPages: number
-  hasNextPage: boolean
-  hasPreviousPage: boolean
-  nextCursor: string | null
-}
-
-interface ApiResponse {
-  success: boolean
-  data: {
-    items: Listing[]
-    pagination: Pagination
-  }
-}
-
 interface Filters {
   category: string | null
   material: string | null
@@ -87,7 +69,6 @@ function ListingsContent() {
   const [materialTypes, setMaterialTypes] = useState<MaterialType[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [hasMore, setHasMore] = useState(true)
   const [activeFilters, setActiveFilters] = useState<Filters>({
     category: searchParams.get('category'),
     material: searchParams.get('material'),
@@ -111,19 +92,18 @@ function ListingsContent() {
   const [sortBy, setSortBy] = useState(searchParams.get('sortBy') || 'newest')
   const [currentImageIndexes, setCurrentImageIndexes] = useState<Record<string, number>>({})
   const [pendingSortBy, setPendingSortBy] = useState(searchParams.get('sortBy') || 'newest')
-  const [currentPage, setCurrentPage] = useState(1)
 
   const observer = useRef<IntersectionObserver | null>(null)
   const lastListingElementRef = useCallback((node: Element | null) => {
     if (loading) return
     if (observer.current) observer.current.disconnect()
     observer.current = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && hasMore) {
-        setCurrentPage(prev => prev + 1)
+      if (entries[0].isIntersecting) {
+        // Load more items if needed
       }
     })
     if (node) observer.current.observe(node)
-  }, [loading, hasMore])
+  }, [loading])
 
   const fetchListings = async (page: number, filters = activeFilters, isLoadMore = false) => {
     try {
@@ -206,7 +186,6 @@ function ListingsContent() {
       }
       setActiveFilters(newFilters)
       setPendingFilters(newFilters)
-      setCurrentPage(1)
       fetchListings(1, newFilters)
     } else {
       // Diğer filtreler için pending state'i kullan
@@ -224,14 +203,12 @@ function ListingsContent() {
     }
     setActiveFilters(newFilters)
     setSortBy(pendingSortBy)
-    setCurrentPage(1)
     fetchListings(1, newFilters)
   }
 
   const handleSort = (value: string) => {
     setPendingSortBy(value)
     setSortBy(value)
-    setCurrentPage(1)
     fetchListings(1, activeFilters)
   }
 
@@ -266,43 +243,6 @@ function ListingsContent() {
     }))
   }
 
-  const goToImage = (listingId: string, index: number) => {
-    setCurrentImageIndexes(prev => ({
-      ...prev,
-      [listingId]: index
-    }))
-  }
-
-  // Fiyat filtresi için özel fonksiyon
-  const handlePriceFilter = (key: 'minPrice' | 'maxPrice', value: string) => {
-    const newFilters = { ...activeFilters };
-    const numValue = value ? parseFloat(value) : null;
-    
-    if (numValue !== null && !isNaN(numValue)) {
-      newFilters[key] = numValue.toString();
-      
-      // Min fiyat, max fiyattan büyükse max fiyatı güncelle
-      if (key === 'minPrice' && newFilters.maxPrice) {
-        const maxPrice = parseFloat(newFilters.maxPrice);
-        if (numValue > maxPrice) {
-          newFilters.maxPrice = numValue.toString();
-        }
-      }
-      // Max fiyat, min fiyattan küçükse min fiyatı güncelle
-      if (key === 'maxPrice' && newFilters.minPrice) {
-        const minPrice = parseFloat(newFilters.minPrice);
-        if (numValue < minPrice) {
-          newFilters.minPrice = numValue.toString();
-        }
-      }
-    } else {
-      newFilters[key] = null;
-    }
-
-    setActiveFilters(newFilters);
-    fetchListings(1, newFilters);
-  };
-
   if (loading && listings.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
@@ -327,15 +267,15 @@ function ListingsContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
         {/* Sonuç Sayısı ve Filtreler Başlığı */}
-        <div className="bg-white rounded-lg shadow-sm p-4 mb-6 mt-16">
+        <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 mb-4 sm:mb-6 mt-16">
           <div className="flex flex-col">
-            <h1 className="text-2xl font-semibold text-gray-900 mb-2">
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">
               {activeFilters.category ? categories.find(c => c.id === activeFilters.category)?.name : 'Tüm İlanlar'}
             </h1>
             {(activeFilters.material || activeFilters.condition) && (
-              <p className="text-lg text-gray-600">
+              <p className="text-base sm:text-lg text-gray-600">
                 {activeFilters.material && `${materialTypes.find(m => m.id === activeFilters.material)?.name}`}
                 {activeFilters.material && activeFilters.condition && ' • '}
                 {activeFilters.condition && `${activeFilters.condition === 'NEW' ? 'Yeni' : 'Kullanılmış'}`}
@@ -344,9 +284,9 @@ function ListingsContent() {
           </div>
         </div>
 
-        <div className="flex">
+        <div className="flex flex-col md:flex-row">
           {/* Sol Panel - Filtreler */}
-          <div className="w-64 bg-white border-r border-gray-100 p-4 sticky top-[72px] h-[calc(100vh-72px)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+          <div className="w-full md:w-64 bg-white border-b md:border-r border-gray-100 p-4 md:sticky md:top-[72px] md:h-[calc(100vh-72px)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
             <div className="space-y-4">
               {/* Kategoriler */}
               <div>
@@ -509,7 +449,7 @@ function ListingsContent() {
               </div>
 
               {/* İlan Listesi */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6">
                 {listings.map((listing, index) => (
                   <motion.div
                     key={listing.id}
@@ -533,7 +473,7 @@ function ListingsContent() {
 
                       {/* Durum Etiketi */}
                       <div className="absolute top-2 left-2">
-                        <span className={`px-2.5 py-1 text-xs font-medium rounded-full backdrop-blur-sm ${
+                        <span className={`px-2 sm:px-2.5 py-0.5 sm:py-1 text-xs font-medium rounded-full backdrop-blur-sm ${
                           listing.condition === 'NEW'
                             ? 'bg-green-100/90 text-green-800'
                             : 'bg-yellow-100/90 text-yellow-800'
@@ -564,19 +504,19 @@ function ListingsContent() {
                       )}
                     </div>
 
-                    <div className="p-4">
+                    <div className="p-3 sm:p-4">
                       <Link href={`/listings/${listing.id}`}>
-                        <h3 className="font-medium text-gray-900 mb-1 line-clamp-2 hover:text-green-600 transition-colors">
+                        <h3 className="font-medium text-sm sm:text-base text-gray-900 mb-1 line-clamp-2 hover:text-green-600 transition-colors">
                           {listing.title}
                         </h3>
                       </Link>
-                      <div className="text-red-600 font-bold mb-2">
+                      <div className="text-red-600 font-bold text-sm sm:text-base mb-2">
                         {listing.price.toLocaleString('tr-TR', {
                           style: 'currency',
                           currency: 'TRY',
                         })}
                       </div>
-                      <div className="flex items-center justify-between text-sm text-gray-500">
+                      <div className="flex items-center justify-between text-xs sm:text-sm text-gray-500">
                         <span>{listing.location}</span>
                         <span>{format(new Date(listing.createdAt), 'd MMM', { locale: tr })}</span>
                       </div>

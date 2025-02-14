@@ -2,15 +2,22 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { Providers } from './providers'
-import Header from './components/Header'
+import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import { Toaster } from 'react-hot-toast'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Stofhamp - İkinci El Eşya Alım Satım',
-  description: 'İkinci el eşyalarınızı güvenle alın ve satın',
+  title: 'Stofhamp - Ham Madde Pazarı',
+  description: 'Stok fazlası ham maddelerin alım satım platformu',
+  icons: {
+    icon: '/favicon.ico',
+  },
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+  },
 }
 
 export default function RootLayout({
@@ -22,8 +29,8 @@ export default function RootLayout({
     <html lang="tr">
       <body className={inter.className}>
         <Providers>
-          <Header />
-          <main className="min-h-screen">
+          <Navbar />
+          <main className="pt-16">
             {children}
           </main>
           <Footer />
