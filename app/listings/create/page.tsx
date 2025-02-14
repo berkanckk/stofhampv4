@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
+import type { Viewport } from 'next'
+import CreateListingForm from './CreateListingForm'
 
 interface Category {
   id: string
@@ -13,6 +15,13 @@ interface Category {
 interface MaterialType {
   id: string
   name: string
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false
 }
 
 export default function CreateListingPage() {
