@@ -6,6 +6,13 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import type { Viewport } from 'next'
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false
+}
+
 interface User {
   id: string
   name: string
@@ -14,13 +21,6 @@ interface User {
   company: string | null
   userType: 'PERSONAL' | 'BUSINESS'
   profileImage: string | null
-}
-
-export const viewport: Viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false
 }
 
 export default function ProfilePage() {
