@@ -37,8 +37,8 @@ export default function Home() {
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-4xl mx-auto text-center">
             <h1 className="mb-8 text-white drop-shadow-2xl">
-              <span className="block text-3xl sm:text-4xl md:text-5xl font-light mb-2">Ergin Dayıya</span>
-              <span className="block text-4xl sm:text-5xl md:text-7xl font-extrabold mb-8">Selam</span>
+              <span className="block text-3xl sm:text-4xl md:text-5xl font-light mb-2">Stok Fazlası</span>
+              <span className="block text-4xl sm:text-5xl md:text-7xl font-extrabold mb-8">Ham Madde Pazarı</span>
             </h1>
 
             <div className="max-w-2xl mx-auto mb-8">
