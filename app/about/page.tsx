@@ -63,10 +63,14 @@ export default function AboutPage() {
       {/* Hero Section with Parallax */}
       <div className="relative h-screen overflow-hidden">
         <motion.div 
-          style={{ y, opacity }}
-          className="absolute inset-0 bg-gradient-to-br from-green-900 via-green-700 to-green-500"
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ 
+            y,
+            opacity,
+            backgroundImage: 'url("/hero-bg.jpg")'
+          }}
         />
-        <div className="absolute inset-0 bg-black/40" />
+        <div className="absolute inset-0 bg-black/50" />
         
         {/* Animated Background Patterns */}
         <motion.div 
@@ -226,15 +230,15 @@ export default function AboutPage() {
                 className="group"
               >
                 <div className="relative overflow-hidden rounded-2xl shadow-xl bg-white">
-                  <div className="relative h-64 sm:h-96">
+                  <div className="relative h-64 sm:h-96 overflow-hidden">
                     <Image
                       src={member.image}
                       alt={member.name}
                       fill
-                      style={{ objectFit: 'cover', objectPosition: 'center 20%' }}
-                      className="transform group-hover:scale-110 transition-transform duration-500"
+                      style={{ objectFit: 'cover', objectPosition: 'center top' }}
+                      className="transition-all duration-700 group-hover:scale-105"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent opacity-70 group-hover:opacity-90 transition-opacity duration-300 pointer-events-none" />
                   </div>
                   <div className="p-4 sm:p-8">
                     <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">{member.name}</h3>
