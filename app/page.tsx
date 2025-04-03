@@ -172,24 +172,24 @@ export default function Home() {
                 transition={{ delay: 0.7, duration: 0.5 }}
               >
                 <Link 
-                  href="#" 
+                  href="/listings" 
                   className="mx-6 text-xl font-medium relative group"
                 >
                   <span className="group-hover:text-green-400 transition-colors duration-300">Hepsi</span>
                   <span className="absolute -bottom-2 left-0 w-full h-0.5 bg-green-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
                 </Link>
                 <Link 
-                  href="/listings/create" 
+                  href="/listings?condition=USED" 
                   className="mx-6 text-xl font-medium relative group"
                 >
-                  <span className="group-hover:text-green-400 transition-colors duration-300">İkinci El</span>
+                  <span className="group-hover:text-green-400 transition-colors duration-300">Kullanılmış</span>
                   <span className="absolute -bottom-2 left-0 w-full h-0.5 bg-green-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
                 </Link>
                 <Link 
-                  href="#" 
+                  href="/listings?condition=NEW" 
                   className="mx-6 text-xl font-medium relative group"
                 >
-                  <span className="group-hover:text-green-400 transition-colors duration-300">Sıfır</span>
+                  <span className="group-hover:text-green-400 transition-colors duration-300">Yeni</span>
                   <span className="absolute -bottom-2 left-0 w-full h-0.5 bg-green-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
                 </Link>
               </motion.div>
@@ -202,10 +202,33 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1, duration: 0.6 }}
             >
-              <div className="flex flex-wrap md:flex-nowrap bg-white p-2 rounded-md shadow-lg hover:shadow-xl transition-all duration-300">
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const formData = new FormData(e.currentTarget);
+                  const category = formData.get('category') as string;
+                  const material = formData.get('material') as string;
+                  const price = formData.get('price') as string;
+                  
+                  const searchParams = new URLSearchParams();
+                  if (category) searchParams.append('category', category);
+                  if (material) searchParams.append('material', material);
+                  if (price) {
+                    const [min, max] = price.split('-');
+                    if (min) searchParams.append('minPrice', min);
+                    if (max) searchParams.append('maxPrice', max);
+                  }
+                  
+                  router.push(`/listings?${searchParams.toString()}`);
+                }}
+                className="flex flex-wrap md:flex-nowrap bg-white p-2 rounded-md shadow-lg hover:shadow-xl transition-all duration-300"
+              >
                 <div className="w-full md:w-1/3 p-2">
                   <div className="relative">
-                    <select className="w-full py-3 px-4 bg-white border-0 text-gray-700 appearance-none focus:outline-none focus:ring-2 focus:ring-green-500 rounded-md transition-all duration-300 hover:bg-green-50">
+                    <select 
+                      name="category"
+                      className="w-full py-3 px-4 bg-white border-0 text-gray-700 appearance-none focus:outline-none focus:ring-2 focus:ring-green-500 rounded-md transition-all duration-300 hover:bg-green-50"
+                    >
                       <option value="">Ürün Kategorisi</option>
                       <option value="metal">Metal</option>
                       <option value="ahsap">Ahşap</option>
@@ -220,7 +243,10 @@ export default function Home() {
                 </div>
                 <div className="w-full md:w-1/3 p-2">
                   <div className="relative">
-                    <select className="w-full py-3 px-4 bg-white border-0 text-gray-700 appearance-none focus:outline-none focus:ring-2 focus:ring-green-500 rounded-md transition-all duration-300 hover:bg-green-50">
+                    <select 
+                      name="material"
+                      className="w-full py-3 px-4 bg-white border-0 text-gray-700 appearance-none focus:outline-none focus:ring-2 focus:ring-green-500 rounded-md transition-all duration-300 hover:bg-green-50"
+                    >
                       <option value="">Malzeme Tipi</option>
                       <option value="celik">Çelik</option>
                       <option value="aluminyum">Alüminyum</option>
@@ -235,11 +261,14 @@ export default function Home() {
                 </div>
                 <div className="w-full md:w-1/3 p-2">
                   <div className="relative">
-                    <select className="w-full py-3 px-4 bg-white border-0 text-gray-700 appearance-none focus:outline-none focus:ring-2 focus:ring-green-500 rounded-md transition-all duration-300 hover:bg-green-50">
+                    <select 
+                      name="price"
+                      className="w-full py-3 px-4 bg-white border-0 text-gray-700 appearance-none focus:outline-none focus:ring-2 focus:ring-green-500 rounded-md transition-all duration-300 hover:bg-green-50"
+                    >
                       <option value="">Fiyat</option>
-                      <option value="0-1000">0 - 1000 TL</option>
-                      <option value="1000-5000">1000 - 5000 TL</option>
-                      <option value="5000+">5000+ TL</option>
+                      <option value="0-1000">0 - 1000 ₺</option>
+                      <option value="1000-5000">1000 - 5000 ₺</option>
+                      <option value="5000-">5000+ ₺</option>
                     </select>
                     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-700">
                       <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -250,6 +279,7 @@ export default function Home() {
                 </div>
                 <div className="w-full md:w-auto p-2">
                   <motion.button 
+                    type="submit"
                     className="w-full h-full bg-green-500 hover:bg-green-600 text-white py-2 px-6 rounded-md transition-colors"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
@@ -260,7 +290,7 @@ export default function Home() {
                     </svg>
                   </motion.button>
                 </div>
-              </div>
+              </form>
             </motion.div>
 
             {/* Icon Features */}
@@ -270,7 +300,7 @@ export default function Home() {
               animate={{ opacity: 1 }}
               transition={{ delay: 1.6, duration: 0.5 }}
             >
-              <Link href="#" className="text-center group">
+              <Link href="/listings?condition=NEW" className="text-center group">
                 <motion.div 
                   className="w-20 h-20 mx-auto bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mb-3 group-hover:bg-white/40 transition-all duration-300 transform group-hover:scale-110"
                   whileHover={{ scale: 1.1 }}
@@ -285,11 +315,11 @@ export default function Home() {
                   className="text-lg font-medium group-hover:text-green-400 transition-colors duration-300"
                   whileHover={{ scale: 1.05 }}
                 >
-                  Sıfır
+                  Yeni
                 </motion.p>
               </Link>
               
-              <Link href="#" className="text-center group">
+              <Link href="/listings?condition=USED" className="text-center group">
                 <motion.div 
                   className="w-20 h-20 mx-auto bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mb-3 group-hover:bg-white/40 transition-all duration-300 transform group-hover:scale-110"
                   whileHover={{ scale: 1.1 }}
@@ -304,7 +334,7 @@ export default function Home() {
                   className="text-lg font-medium group-hover:text-green-400 transition-colors duration-300"
                   whileHover={{ scale: 1.05 }}
                 >
-                  İkinci El
+                  Kullanılmış
                 </motion.p>
               </Link>
             </motion.div>
