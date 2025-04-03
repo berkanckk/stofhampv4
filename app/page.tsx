@@ -4,10 +4,60 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { motion } from 'framer-motion'
+import Image from 'next/image'
+import { useEffect, useState } from 'react'
+
+// İlan türü tanımlaması
+interface Listing {
+  id: string
+  title: string
+  description: string
+  price: number
+  condition: 'NEW' | 'USED'
+  images: string[]
+  location: string
+  category: {
+    id: string
+    name: string
+  }
+  createdAt: string
+  _count: {
+    favorites: number
+  }
+}
 
 export default function Home() {
   const router = useRouter()
   const { data: session } = useSession()
+  const [featuredListings, setFeaturedListings] = useState<Listing[]>([])
+  const [loadingListings, setLoadingListings] = useState(true)
+
+  // İlanları yükle
+  useEffect(() => {
+    const fetchFeaturedListings = async () => {
+      try {
+        setLoadingListings(true)
+        // Öne çıkan ilanlar için sorgu parametreleri
+        const params = new URLSearchParams()
+        params.append('page', '1')
+        params.append('sortBy', 'newest')
+        params.append('limit', '3') // Sadece 3 ilan göster
+        
+        const response = await fetch(`/api/listings?${params.toString()}`)
+        const data = await response.json()
+        
+        if (data.success) {
+          setFeaturedListings(data.data.items)
+        }
+      } catch (error) {
+        console.error('Öne çıkan ilanlar yüklenirken hata:', error)
+      } finally {
+        setLoadingListings(false)
+      }
+    }
+    
+    fetchFeaturedListings()
+  }, [])
 
   const handleSearch = (value: string) => {
     if (value) {
@@ -24,6 +74,26 @@ export default function Home() {
         when: "beforeChildren",
         staggerChildren: 0.3
       }
+    }
+  }
+
+  // Tarih formatlama fonksiyonu
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffTime = Math.abs(now.getTime() - date.getTime())
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+    
+    if (diffDays === 0) {
+      return 'Bugün'
+    } else if (diffDays === 1) {
+      return 'Dün'
+    } else if (diffDays < 7) {
+      return `${diffDays} gün önce`
+    } else if (diffDays < 30) {
+      return `${Math.floor(diffDays / 7)} hafta önce`
+    } else {
+      return `${Math.floor(diffDays / 30)} ay önce`
     }
   }
 
@@ -283,6 +353,131 @@ export default function Home() {
               </p>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Featured Listings Section */}
+      <section className="py-16 bg-gradient-to-br from-gray-50 to-white">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col sm:flex-row justify-between items-center mb-12">
+            <div>
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2">
+                Öne Çıkan İlanlar
+              </h2>
+              <div className="w-20 h-1.5 bg-green-500 rounded-full"></div>
+            </div>
+            <Link 
+              href="/listings" 
+              className="mt-4 sm:mt-0 text-green-600 hover:text-green-700 font-medium flex items-center transition-colors group"
+            >
+              <span className="mr-2 group-hover:underline">Tümünü Gör</span>
+              <svg className="w-5 h-5 transform group-hover:translate-x-1 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </Link>
+          </div>
+          
+          {loadingListings ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="relative bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 p-4 h-96">
+                  <div className="animate-pulse">
+                    <div className="h-48 bg-gray-200 rounded-lg mb-4"></div>
+                    <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
+                    <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
+                    <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded w-2/3 mb-4"></div>
+                    <div className="flex justify-between">
+                      <div className="h-6 bg-gray-200 rounded w-1/3"></div>
+                      <div className="h-6 bg-gray-200 rounded w-1/4"></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : featuredListings.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {featuredListings.map((listing) => (
+                <motion.div 
+                  key={listing.id}
+                  whileHover={{ y: -10, boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)" }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                  className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 transform"
+                >
+                  <Link href={`/listings/${listing.id}`} className="block h-full relative">
+                    <div className="relative h-56 overflow-hidden">
+                      <div className="absolute top-2 left-2 bg-green-100 text-green-800 text-xs font-semibold px-3 py-1.5 rounded-full z-10 shadow-sm">
+                        {listing.condition === 'NEW' ? 'Yeni' : 'Kullanılmış'}
+                      </div>
+                      <div className="absolute top-2 right-2 bg-white rounded-full p-2 shadow-md z-10 hover:bg-red-50 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 hover:text-red-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                        </svg>
+                      </div>
+                      <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+                        {listing.images && listing.images.length > 0 ? (
+                          <Image 
+                            src={listing.images[0]} 
+                            alt={listing.title} 
+                            width={500} 
+                            height={300} 
+                            className="w-full h-full object-cover transition-transform duration-700 hover:scale-110"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                            <svg className="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="p-6">
+                      <div className="flex justify-between items-center mb-3">
+                        <span className="text-sm font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-md">
+                          {listing.category?.name || 'Diğer'}
+                        </span>
+                        <span className="text-xs text-gray-500">{formatDate(listing.createdAt)}</span>
+                      </div>
+                      <h3 className="text-xl font-bold mb-3 text-gray-900 line-clamp-1 hover:text-green-700 transition-colors">{listing.title}</h3>
+                      <p className="text-gray-600 text-sm mb-4 line-clamp-2 h-10">
+                        {listing.description}
+                      </p>
+                      <div className="pt-3 border-t border-gray-100 flex justify-between items-center">
+                        <span className="text-xl font-bold text-green-700">{listing.price.toLocaleString('tr-TR')} ₺</span>
+                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-md flex items-center">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          {listing.location}
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-16 bg-white rounded-xl shadow-sm">
+              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-700 mb-2">Henüz İlan Bulunamadı</h3>
+              <p className="text-gray-500 text-lg mb-8 max-w-md mx-auto">Platformda henüz ilan yok. İlk ilanı oluşturarak başlayabilirsiniz.</p>
+              <Link 
+                href="/listings/create" 
+                className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition-colors text-base font-medium shadow-sm hover:shadow-md"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                İlk İlanı Oluştur
+              </Link>
+            </div>
+          )}
         </div>
       </section>
 
