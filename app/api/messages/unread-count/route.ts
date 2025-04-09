@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/app/lib/prismadb'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '../../auth/[...nextauth]/options'
+import { authOptions } from '@/app/api/auth/[...nextauth]/options'
 import { globalCache } from '@/app/lib/cache'
 
 const CACHE_KEY_PREFIX = 'unread_count_'
@@ -11,50 +11,32 @@ export async function GET() {
   try {
     const session = await getServerSession(authOptions)
     
-    if (!session?.user?.email) {
+    if (!session?.user?.id) {
       return NextResponse.json(
-        { unreadCount: 0 },
-        { status: 200 }
+        { success: false, message: 'Oturum açmanız gerekiyor' },
+        { status: 401 }
       )
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
+    const userId = session.user.id
+
+    // Okunmamış mesaj sayısını hesapla
+    const unreadCount = await prisma.message.count({
+      where: {
+        receiverId: userId,
+        isRead: false
+      }
     })
 
-    if (!user) {
-      return NextResponse.json(
-        { unreadCount: 0 },
-        { status: 200 }
-      )
-    }
-
-    // Cache anahtarını oluştur
-    const cacheKey = `${CACHE_KEY_PREFIX}${user.id}`
-
-    // Cache'den kontrol et
-    let unreadCount = globalCache.get<number>(cacheKey)
-
-    // Cache'de yoksa veya süresi dolmuşsa
-    if (unreadCount === null) {
-      unreadCount = await prisma.message.count({
-        where: {
-          receiverId: user.id,
-          isRead: false
-        }
-      })
-
-      // Cache'e kaydet (30 saniyelik TTL ile)
-      globalCache.set(cacheKey, unreadCount, CACHE_TTL)
-    }
-
-    return NextResponse.json({ unreadCount })
-    
+    return NextResponse.json({
+      success: true,
+      count: unreadCount
+    })
   } catch (error) {
-    console.error('Unread count error:', error)
+    console.error('Error getting unread message count:', error)
     return NextResponse.json(
-      { error: 'Okunmamış mesaj sayısı alınamadı', unreadCount: 0 },
-      { status: 200 }
+      { success: false, message: 'Okunmamış mesaj sayısı alınırken bir hata oluştu' },
+      { status: 500 }
     )
   }
 } 

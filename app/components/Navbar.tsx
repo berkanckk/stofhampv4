@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useSession, signOut } from 'next-auth/react'
 import { usePathname } from 'next/navigation'
 import Image from 'next/image'
+import { motion } from 'framer-motion'
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
@@ -12,6 +13,7 @@ export default function Navbar() {
   const { data: session } = useSession()
   const pathname = usePathname()
   const isHomePage = pathname === '/'
+  const [unreadCount, setUnreadCount] = useState(0)
 
   // Scroll durumunu takip et
   useEffect(() => {
@@ -33,6 +35,35 @@ export default function Navbar() {
   useEffect(() => {
     setIsOpen(false)
   }, [pathname])
+
+  // Okunmamış mesaj sayısını getir ve düzenli olarak güncelle
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      if (!session?.user?.id) return
+      
+      try {
+        const response = await fetch('/api/messages/unread-count', {
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache' }
+        })
+        const data = await response.json()
+        
+        if (data.success) {
+          setUnreadCount(data.count)
+        }
+      } catch (error) {
+        console.error('Unread messages count error:', error)
+      }
+    }
+    
+    // İlk yüklemede çalıştır
+    fetchUnreadCount()
+    
+    // Her 15 saniyede bir güncelle
+    const intervalId = setInterval(fetchUnreadCount, 15000)
+    
+    return () => clearInterval(intervalId)
+  }, [session?.user?.id])
 
   return (
     <nav 
@@ -76,11 +107,20 @@ export default function Navbar() {
             >
               Hakkımızda
             </Link>
-            <Link 
-              href="/contact"
-              className={`${isHomePage ? 'text-white' : 'text-gray-600'} hover:text-green-600 px-3 py-2 text-sm font-medium transition-colors`}
+            <Link
+              href="/messages"
+              className={`text-base font-medium px-4 py-2 rounded-lg hover:bg-green-100 hover:text-green-800 transition-colors ${pathname.startsWith('/messages') ? 'text-green-600 bg-green-100' : isHomePage ? 'text-white' : 'text-gray-700'}`}
             >
-              İletişim
+              <div className="relative flex items-center">
+                <span>Mesajlar</span>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-3 flex h-5 w-5">
+                    <span className="relative inline-flex rounded-full h-5 w-5 bg-red-500 text-white text-xs items-center justify-center animate-pulse">
+                      {unreadCount}
+                    </span>
+                  </span>
+                )}
+              </div>
             </Link>
 
             {session ? (
@@ -123,7 +163,14 @@ export default function Navbar() {
                       href="/messages"
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
-                      Mesajlarım
+                      <div className="relative flex items-center">
+                        <span>Mesajlarım</span>
+                        {unreadCount > 0 && (
+                          <span className="ml-2 inline-flex rounded-full h-5 w-5 bg-red-500 text-white text-xs items-center justify-center">
+                            {unreadCount}
+                          </span>
+                        )}
+                      </div>
                     </Link>
                     <button
                       onClick={() => signOut()}
@@ -225,7 +272,14 @@ export default function Navbar() {
                 href="/messages"
                 className={`block px-3 py-2 text-base font-medium ${isHomePage ? 'text-white hover:bg-white/10' : 'text-gray-600 hover:text-green-600 hover:bg-gray-50'} rounded-md`}
               >
-                Mesajlarım
+                <div className="relative flex items-center">
+                  <span>Mesajlarım</span>
+                  {unreadCount > 0 && (
+                    <span className="ml-2 inline-flex rounded-full h-5 w-5 bg-red-500 text-white text-xs items-center justify-center">
+                      {unreadCount}
+                    </span>
+                  )}
+                </div>
               </Link>
               <button
                 onClick={() => signOut()}

@@ -34,37 +34,51 @@ export default function ConversationPage({ params }: PageProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const firstUnreadRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    const fetchMessages = async () => {
-      try {
-        const resolvedParams = await params
-        const response = await fetch(`/api/conversations/${resolvedParams.id}/messages`)
-        const result = await response.json()
-
-        if (!result.success) {
-          throw new Error(result.message)
+  const fetchMessages = async () => {
+    try {
+      const resolvedParams = await params
+      const response = await fetch(`/api/conversations/${resolvedParams.id}/messages`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache'
         }
+      })
+      const result = await response.json()
 
-        setMessages(result.data)
-
-        // Mesajları okundu olarak işaretle
-        await fetch('/api/messages/mark-read', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ conversationId: resolvedParams.id }),
-        })
-      } catch (error) {
-        setError('Mesajlar yüklenirken bir hata oluştu')
-        console.error('Fetch messages error:', error)
-      } finally {
-        setLoading(false)
+      if (!result.success) {
+        throw new Error(result.message)
       }
-    }
 
+      setMessages(result.data)
+
+      // Mesajları okundu olarak işaretle
+      await fetch('/api/messages/mark-read', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ conversationId: resolvedParams.id }),
+      })
+    } catch (error) {
+      setError('Mesajlar yüklenirken bir hata oluştu')
+      console.error('Fetch messages error:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
     if (session?.user?.id) {
       fetchMessages()
+      
+      // Her 5 saniyede bir mesajları güncelle
+      const intervalId = setInterval(() => {
+        console.log('Mesajlar güncelleniyor...')
+        fetchMessages()
+      }, 5000) // 5 saniye
+      
+      // Component unmount olduğunda interval'ı temizle
+      return () => clearInterval(intervalId)
     }
   }, [session, params])
 

@@ -50,28 +50,42 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    const fetchConversations = async () => {
-      try {
-        const response = await fetch('/api/conversations')
-        const result = await response.json()
-
-        if (!result.success) {
-          throw new Error(result.message)
+  const fetchConversations = async () => {
+    try {
+      const response = await fetch('/api/conversations', {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache'
         }
+      })
+      const result = await response.json()
 
-        console.log('Conversations data:', result.data)
-        setConversations(result.data)
-      } catch (error) {
-        setError('Sohbetler yüklenirken bir hata oluştu')
-        console.error('Fetch conversations error:', error)
-      } finally {
-        setLoading(false)
+      if (!result.success) {
+        throw new Error(result.message)
       }
-    }
 
+      console.log('Conversations data:', result.data)
+      setConversations(result.data)
+    } catch (error) {
+      setError('Sohbetler yüklenirken bir hata oluştu')
+      console.error('Fetch conversations error:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
     if (session?.user?.id) {
       fetchConversations()
+      
+      // Polling ile her 10 saniyede bir yeni mesajları kontrol et
+      const intervalId = setInterval(() => {
+        console.log('Yeni mesajlar kontrol ediliyor...')
+        fetchConversations()
+      }, 10000) // 10 saniye
+      
+      // Component unmount olduğunda interval'ı temizle
+      return () => clearInterval(intervalId)
     }
   }, [session])
 

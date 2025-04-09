@@ -19,12 +19,12 @@ export async function POST(request: Request) {
 
     if (!conversationId) {
       return NextResponse.json(
-        { success: false, message: 'Geçersiz sohbet ID' },
+        { success: false, message: 'conversationId gerekli' },
         { status: 400 }
       );
     }
 
-    // Kullanıcının bu sohbete erişim yetkisi var mı kontrol et
+    // Kullanıcının bu sohbette olduğunu kontrol et
     const conversation = await prisma.conversation.findFirst({
       where: {
         id: conversationId,
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Okunmamış mesajları okundu olarak işaretle
+    // Mesajları okundu olarak işaretle
     await prisma.message.updateMany({
       where: {
         conversationId,
@@ -62,11 +62,10 @@ export async function POST(request: Request) {
       success: true,
       message: 'Mesajlar okundu olarak işaretlendi'
     });
-
   } catch (error) {
     console.error('Mark messages as read error:', error);
     return NextResponse.json(
-      { success: false, message: 'Mesajlar işaretlenirken bir hata oluştu' },
+      { success: false, message: 'Mesajlar okundu olarak işaretlenirken bir hata oluştu' },
       { status: 500 }
     );
   }
