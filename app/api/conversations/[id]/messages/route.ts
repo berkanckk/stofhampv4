@@ -86,7 +86,7 @@ export async function GET(
           }
         },
         orderBy: {
-          createdAt: 'desc'
+          createdAt: 'asc'
         },
         skip: (page - 1) * MESSAGES_PER_PAGE,
         take: MESSAGES_PER_PAGE

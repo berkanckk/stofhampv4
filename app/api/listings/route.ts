@@ -117,15 +117,27 @@ export async function GET(request: Request) {
     // Filtreleme koşullarını oluştur
     const where: Prisma.ListingWhereInput = {}
 
-    if (filters.category) where.categoryId = filters.category
-    if (filters.material) where.materialId = filters.material
-    if (filters.condition) where.condition = filters.condition as 'NEW' | 'USED'
+    if (filters.category) {
+      console.log('Filtreleniyor - Kategori:', filters.category);
+      where.categoryId = filters.category;
+    }
+    
+    if (filters.material) {
+      console.log('Filtreleniyor - Malzeme:', filters.material);
+      where.materialId = filters.material;
+    }
+    
+    if (filters.condition) {
+      console.log('Filtreleniyor - Durumu:', filters.condition);
+      where.condition = filters.condition as 'NEW' | 'USED';
+    }
 
     if (filters.minPrice || filters.maxPrice) {
       where.price = {
         ...(filters.minPrice && { gte: parseFloat(filters.minPrice) }),
         ...(filters.maxPrice && { lte: parseFloat(filters.maxPrice) })
       }
+      console.log('Filtreleniyor - Fiyat:', where.price);
     }
 
     if (filters.search) {

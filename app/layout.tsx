@@ -5,6 +5,7 @@ import { Providers } from './providers'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import { Toaster } from 'react-hot-toast'
+import NonHomePageWrapper from './components/NonHomePageWrapper'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -34,9 +35,9 @@ export default function RootLayout({
       <body className={inter.className}>
         <Providers>
           <Navbar />
-          <main className="pt-16">
+          <NonHomePageWrapper>
             {children}
-          </main>
+          </NonHomePageWrapper>
           <Footer />
           <Toaster position="top-right" />
         </Providers>

@@ -4,11 +4,30 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useSession, signOut } from 'next-auth/react'
 import { usePathname } from 'next/navigation'
+import Image from 'next/image'
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
   const { data: session } = useSession()
   const pathname = usePathname()
+  const isHomePage = pathname === '/'
+
+  // Scroll durumunu takip et
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 100) {
+        setScrolled(true)
+      } else {
+        setScrolled(false)
+      }
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+    }
+  }, [])
 
   // Mobil menüyü kapatmak için
   useEffect(() => {
@@ -16,16 +35,30 @@ export default function Navbar() {
   }, [pathname])
 
   return (
-    <nav className="fixed top-0 left-0 right-0 bg-white border-b z-50">
+    <nav 
+      className={`${isHomePage ? (scrolled ? 'fixed bg-black/80 shadow-lg' : 'absolute bg-transparent') : 'fixed bg-white border-b'} 
+                top-0 left-0 right-0 z-50 transition-all duration-300`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           {/* Logo */}
           <div className="flex-shrink-0 flex items-center">
             <Link 
               href="/" 
-              className="text-xl font-bold text-gray-800 hover:text-green-600 transition-colors"
+              className="flex items-center space-x-0"
             >
-              Stofhamp
+              <div className="relative h-16 w-44 -mr-10">
+                <Image 
+                  src="/stof.png" 
+                  alt="Stofhamp Logo" 
+                  fill
+                  style={{ objectFit: 'contain' }}
+                  priority
+                />
+              </div>
+              <span className={`text-xl font-bold ${isHomePage ? 'text-white' : 'text-gray-800'}`}>
+                Stofhamp
+              </span>
             </Link>
           </div>
 
@@ -33,19 +66,19 @@ export default function Navbar() {
           <div className="hidden md:flex md:items-center md:space-x-8">
             <Link 
               href="/listings"
-              className="text-gray-600 hover:text-green-600 px-3 py-2 text-sm font-medium transition-colors"
+              className={`${isHomePage ? 'text-white' : 'text-gray-600'} hover:text-green-600 px-3 py-2 text-sm font-medium transition-colors`}
             >
               İlanlar
             </Link>
             <Link 
               href="/about"
-              className="text-gray-600 hover:text-green-600 px-3 py-2 text-sm font-medium transition-colors"
+              className={`${isHomePage ? 'text-white' : 'text-gray-600'} hover:text-green-600 px-3 py-2 text-sm font-medium transition-colors`}
             >
               Hakkımızda
             </Link>
             <Link 
               href="/contact"
-              className="text-gray-600 hover:text-green-600 px-3 py-2 text-sm font-medium transition-colors"
+              className={`${isHomePage ? 'text-white' : 'text-gray-600'} hover:text-green-600 px-3 py-2 text-sm font-medium transition-colors`}
             >
               İletişim
             </Link>
@@ -60,7 +93,7 @@ export default function Navbar() {
                 </Link>
                 <div className="relative group">
                   <button
-                    className="flex items-center text-gray-600 hover:text-green-600 transition-colors"
+                    className={`flex items-center ${isHomePage ? 'text-white' : 'text-gray-600'} hover:text-green-600 transition-colors`}
                   >
                     <span className="text-sm font-medium mr-2">Hesabım</span>
                     <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
@@ -105,7 +138,7 @@ export default function Navbar() {
               <div className="flex items-center space-x-4">
                 <Link
                   href="/login"
-                  className="text-gray-600 hover:text-green-600 px-3 py-2 text-sm font-medium transition-colors"
+                  className={`${isHomePage ? 'text-white' : 'text-gray-600'} hover:text-green-600 px-3 py-2 text-sm font-medium transition-colors`}
                 >
                   Giriş Yap
                 </Link>
@@ -123,7 +156,7 @@ export default function Navbar() {
           <div className="md:hidden flex items-center">
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
+              className={`inline-flex items-center justify-center p-2 rounded-md ${isHomePage ? 'text-white hover:text-gray-300 hover:bg-gray-800/30' : 'text-gray-400 hover:text-gray-500 hover:bg-gray-100'}`}
             >
               <span className="sr-only">Menüyü aç</span>
               {isOpen ? (
@@ -141,23 +174,23 @@ export default function Navbar() {
       </div>
 
       {/* Mobile Menu */}
-      <div className={`md:hidden ${isOpen ? 'block' : 'hidden'}`}>
-        <div className="px-2 pt-2 pb-3 space-y-1 bg-white border-b">
+      <div className={`md:hidden ${isOpen ? 'block' : 'hidden'} ${isHomePage ? 'bg-black/80 backdrop-blur-sm' : 'bg-white border-b'}`}>
+        <div className={`px-2 pt-2 pb-3 space-y-1 ${isHomePage ? '' : 'bg-white'}`}>
           <Link
             href="/listings"
-            className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-green-600 hover:bg-gray-50 rounded-md"
+            className={`block px-3 py-2 text-base font-medium ${isHomePage ? 'text-white hover:bg-white/10' : 'text-gray-600 hover:text-green-600 hover:bg-gray-50'} rounded-md`}
           >
             İlanlar
           </Link>
           <Link
             href="/about"
-            className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-green-600 hover:bg-gray-50 rounded-md"
+            className={`block px-3 py-2 text-base font-medium ${isHomePage ? 'text-white hover:bg-white/10' : 'text-gray-600 hover:text-green-600 hover:bg-gray-50'} rounded-md`}
           >
             Hakkımızda
           </Link>
           <Link
             href="/contact"
-            className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-green-600 hover:bg-gray-50 rounded-md"
+            className={`block px-3 py-2 text-base font-medium ${isHomePage ? 'text-white hover:bg-white/10' : 'text-gray-600 hover:text-green-600 hover:bg-gray-50'} rounded-md`}
           >
             İletişim
           </Link>
@@ -172,31 +205,31 @@ export default function Navbar() {
               </Link>
               <Link
                 href="/profile"
-                className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-green-600 hover:bg-gray-50 rounded-md"
+                className={`block px-3 py-2 text-base font-medium ${isHomePage ? 'text-white hover:bg-white/10' : 'text-gray-600 hover:text-green-600 hover:bg-gray-50'} rounded-md`}
               >
                 Profilim
               </Link>
               <Link
                 href="/my-listings"
-                className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-green-600 hover:bg-gray-50 rounded-md"
+                className={`block px-3 py-2 text-base font-medium ${isHomePage ? 'text-white hover:bg-white/10' : 'text-gray-600 hover:text-green-600 hover:bg-gray-50'} rounded-md`}
               >
                 İlanlarım
               </Link>
               <Link
                 href="/favorites"
-                className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-green-600 hover:bg-gray-50 rounded-md"
+                className={`block px-3 py-2 text-base font-medium ${isHomePage ? 'text-white hover:bg-white/10' : 'text-gray-600 hover:text-green-600 hover:bg-gray-50'} rounded-md`}
               >
                 Favorilerim
               </Link>
               <Link
                 href="/messages"
-                className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-green-600 hover:bg-gray-50 rounded-md"
+                className={`block px-3 py-2 text-base font-medium ${isHomePage ? 'text-white hover:bg-white/10' : 'text-gray-600 hover:text-green-600 hover:bg-gray-50'} rounded-md`}
               >
                 Mesajlarım
               </Link>
               <button
                 onClick={() => signOut()}
-                className="block w-full text-left px-3 py-2 text-base font-medium text-red-600 hover:text-red-700 hover:bg-gray-50 rounded-md"
+                className={`block w-full text-left px-3 py-2 text-base font-medium text-red-600 hover:text-red-700 ${isHomePage ? 'hover:bg-white/10' : 'hover:bg-gray-50'} rounded-md`}
               >
                 Çıkış Yap
               </button>
@@ -205,7 +238,7 @@ export default function Navbar() {
             <>
               <Link
                 href="/login"
-                className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-green-600 hover:bg-gray-50 rounded-md"
+                className={`block px-3 py-2 text-base font-medium ${isHomePage ? 'text-white hover:bg-white/10' : 'text-gray-600 hover:text-green-600 hover:bg-gray-50'} rounded-md`}
               >
                 Giriş Yap
               </Link>

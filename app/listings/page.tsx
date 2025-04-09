@@ -173,6 +173,8 @@ function ListingsContent() {
       search: searchParams.get('search')
     }
     
+    console.log('URL filtre parametreleri:', urlFilters);
+    
     setActiveFilters(urlFilters)
     setPendingFilters(urlFilters)
     fetchListings(1, urlFilters)
