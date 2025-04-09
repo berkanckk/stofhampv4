@@ -1,35 +1,103 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
 model User {
+  id               String         @id @default(uuid())
+  email            String         @unique
+  password         String
+  name             String
+  phone            String?
+  company          String?
+  userType         UserType       @default(PERSONAL)
+  profileImage     String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  favorites        Favorite[]
+  listings         Listing[]
+  receivedMessages Message[]      @relation("ReceivedMessages")
+  sentMessages     Message[]      @relation("SentMessages")
+  conversations    Conversation[] @relation("UserConversations")
+}
+
+model Listing {
   id            String         @id @default(uuid())
-  email         String         @unique
-  password      String
-  name          String
-  phone         String?
-  company       String?
-  userType      UserType       @default(PERSONAL)
-  profileImage  String?
+  title         String
+  description   String
+  price         Float
+  condition     Condition
+  categoryId    String
+  materialId    String
+  images        String[]       @default([])
+  location      String
+  sellerId      String
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
-  listings      Listing[]
-  sentMessages     Message[]       @relation("SentMessages")
-  receivedMessages Message[]       @relation("ReceivedMessages")
-  conversations    Conversation[]  @relation("UserConversations")
+  expiresAt     DateTime?
+  conversations Conversation[]
   favorites     Favorite[]
+  category      Category       @relation(fields: [categoryId], references: [id])
+  material      MaterialType   @relation(fields: [materialId], references: [id])
+  seller        User           @relation(fields: [sellerId], references: [id])
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  listings    Listing[]
+}
+
+model MaterialType {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  listings    Listing[]
+}
+
+model Conversation {
+  id        String    @id @default(uuid())
+  listingId String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  listing   Listing?  @relation(fields: [listingId], references: [id])
+  messages  Message[]
+  users     User[]    @relation("UserConversations")
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  content        String
+  senderId       String
+  receiverId     String
+  conversationId String
+  isRead         Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  receiver       User         @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  sender         User         @relation("SentMessages", fields: [senderId], references: [id])
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  userId    String
+  listingId String
+  createdAt DateTime @default(now())
+  listing   Listing  @relation(fields: [listingId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, listingId])
 }
 
 enum UserType {
@@ -37,81 +105,7 @@ enum UserType {
   BUSINESS
 }
 
-model Listing {
-  id          String        @id @default(uuid())
-  title       String
-  description String
-  price       Float
-  condition   Condition
-  expiresAt   DateTime?
-  category    Category      @relation(fields: [categoryId], references: [id])
-  categoryId  String
-  material    MaterialType  @relation(fields: [materialId], references: [id])
-  materialId  String
-  images      String[]      @default([])
-  location    String
-  seller      User          @relation(fields: [sellerId], references: [id])
-  sellerId    String
-  conversations Conversation[]
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  favorites   Favorite[]
-}
-
 enum Condition {
   NEW
   USED
-}
-
-model Category {
-  id          String    @id @default(uuid())
-  name        String    @unique
-  description String?
-  listings    Listing[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-}
-
-model MaterialType {
-  id          String    @id @default(uuid())
-  name        String    @unique
-  description String?
-  listings    Listing[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-}
-
-model Conversation {
-  id        String    @id @default(uuid())
-  users     User[]    @relation("UserConversations")
-  messages  Message[]
-  listingId String?
-  listing   Listing?  @relation(fields: [listingId], references: [id])
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-}
-
-model Message {
-  id             String       @id @default(uuid())
-  content        String
-  sender         User         @relation("SentMessages", fields: [senderId], references: [id])
-  senderId       String
-  receiver       User         @relation("ReceivedMessages", fields: [receiverId], references: [id])
-  receiverId     String
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
-  conversationId String
-  isRead         Boolean      @default(false)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-}
-
-model Favorite {
-  id        String   @id @default(uuid())
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String
-  listing   Listing  @relation(fields: [listingId], references: [id])
-  listingId String
-  createdAt DateTime @default(now())
-
-  @@unique([userId, listingId])
 }
