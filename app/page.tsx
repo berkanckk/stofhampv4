@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 
 // İlan türü tanımlaması
 interface Listing {
@@ -26,11 +26,24 @@ interface Listing {
   }
 }
 
+// Kategori ve malzeme tipi arayüzleri
+interface Category {
+  id: string
+  name: string
+}
+
+interface MaterialType {
+  id: string
+  name: string
+}
+
 export default function Home() {
   const router = useRouter()
   const { data: session } = useSession()
   const [featuredListings, setFeaturedListings] = useState<Listing[]>([])
   const [loadingListings, setLoadingListings] = useState(true)
+  const [categories, setCategories] = useState<Category[]>([])
+  const [materialTypes, setMaterialTypes] = useState<MaterialType[]>([])
 
   // İlanları yükle
   useEffect(() => {
@@ -58,6 +71,26 @@ export default function Home() {
     
     fetchFeaturedListings()
   }, [])
+
+  // Kategorileri ve malzeme tiplerini yükle
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Veritabanından kategorileri ve malzeme tiplerini al
+        const response = await fetch('/api/listings?page=1&limit=1');
+        const result = await response.json();
+        
+        if (result.success) {
+          setCategories(result.data.categories || []);
+          setMaterialTypes(result.data.materialTypes || []);
+        }
+      } catch (error) {
+        console.error('Kategori ve malzeme tipleri yüklenirken hata:', error);
+      }
+    };
+    
+    fetchData();
+  }, []);
 
   const handleSearch = (value: string) => {
     if (value) {
@@ -211,13 +244,16 @@ export default function Home() {
                   const price = formData.get('price') as string;
                   
                   const searchParams = new URLSearchParams();
-                  if (category) searchParams.append('category', category);
-                  if (material) searchParams.append('material', material);
-                  if (price) {
+                  if (category && category !== "") searchParams.append('category', category);
+                  if (material && material !== "") searchParams.append('material', material);
+                  if (price && price !== "") {
                     const [min, max] = price.split('-');
                     if (min) searchParams.append('minPrice', min);
-                    if (max) searchParams.append('maxPrice', max);
+                    if (max && max !== "") searchParams.append('maxPrice', max);
                   }
+                  
+                  // Debug için
+                  console.log("Filtering with params:", searchParams.toString());
                   
                   router.push(`/listings?${searchParams.toString()}`);
                 }}
@@ -230,13 +266,15 @@ export default function Home() {
                       className="w-full py-3 px-4 bg-white border-0 text-gray-700 appearance-none focus:outline-none focus:ring-2 focus:ring-green-500 rounded-md transition-all duration-300 hover:bg-green-50"
                     >
                       <option value="">Ürün Kategorisi</option>
-                      <option value="metal">Metal</option>
-                      <option value="ahsap">Ahşap</option>
-                      <option value="plastik">Plastik</option>
+                      {categories.map(category => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
                     </select>
                     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-700">
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M2 5L6 9L10 5" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <svg width="16" height="16" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 5L7 9L11 5" stroke="black" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     </div>
                   </div>
@@ -248,13 +286,15 @@ export default function Home() {
                       className="w-full py-3 px-4 bg-white border-0 text-gray-700 appearance-none focus:outline-none focus:ring-2 focus:ring-green-500 rounded-md transition-all duration-300 hover:bg-green-50"
                     >
                       <option value="">Malzeme Tipi</option>
-                      <option value="celik">Çelik</option>
-                      <option value="aluminyum">Alüminyum</option>
-                      <option value="cam">Cam</option>
+                      {materialTypes.map(material => (
+                        <option key={material.id} value={material.id}>
+                          {material.name}
+                        </option>
+                      ))}
                     </select>
                     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-700">
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M2 5L6 9L10 5" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <svg width="16" height="16" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 5L7 9L11 5" stroke="black" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     </div>
                   </div>
@@ -271,8 +311,8 @@ export default function Home() {
                       <option value="5000-">5000+ ₺</option>
                     </select>
                     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-700">
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M2 5L6 9L10 5" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <svg width="16" height="16" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 5L7 9L11 5" stroke="black" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     </div>
                   </div>
