@@ -114,7 +114,7 @@ export default function Navbar() {
               <div className="relative flex items-center">
                 <span>Mesajlar</span>
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-3 flex h-5 w-5">
+                  <span className="absolute -top-1 -right-6 flex h-5 w-5">
                     <span className="relative inline-flex rounded-full h-5 w-5 bg-red-500 text-white text-xs items-center justify-center animate-pulse">
                       {unreadCount}
                     </span>
@@ -166,7 +166,7 @@ export default function Navbar() {
                       <div className="relative flex items-center">
                         <span>Mesajlarım</span>
                         {unreadCount > 0 && (
-                          <span className="ml-2 inline-flex rounded-full h-5 w-5 bg-red-500 text-white text-xs items-center justify-center">
+                          <span className="ml-2 inline-flex rounded-full h-4 w-4 bg-red-500 text-white text-xs items-center justify-center">
                             {unreadCount}
                           </span>
                         )}
@@ -275,7 +275,7 @@ export default function Navbar() {
                 <div className="relative flex items-center">
                   <span>Mesajlarım</span>
                   {unreadCount > 0 && (
-                    <span className="ml-2 inline-flex rounded-full h-5 w-5 bg-red-500 text-white text-xs items-center justify-center">
+                    <span className="ml-2 inline-flex rounded-full h-4 w-4 bg-red-500 text-white text-xs items-center justify-center">
                       {unreadCount}
                     </span>
                   )}
