@@ -1,19 +1,66 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useSession, signOut } from 'next-auth/react'
 import { usePathname } from 'next/navigation'
 import Image from 'next/image'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
+
+// Kullanıcı tipi tanımlaması
+interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  profileImage: string | null;
+  company: string | null;
+}
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const pathname = usePathname()
   const isHomePage = pathname === '/'
   const [unreadCount, setUnreadCount] = useState(0)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+
+  // Kullanıcı profil bilgilerini getir
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!session?.user?.id) return;
+      
+      try {
+        const response = await fetch('/api/profile');
+        const result = await response.json();
+        
+        if (result.success) {
+          setUserProfile(result.data);
+        }
+      } catch (error) {
+        console.error('Profil bilgileri alınamadı:', error);
+      }
+    };
+    
+    if (session) {
+      fetchUserProfile();
+    }
+  }, [session]);
+
+  // Dışarı tıklandığında menüyü kapat
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // Scroll durumunu takip et
   useEffect(() => {
@@ -31,7 +78,7 @@ export default function Navbar() {
     }
   }, [])
 
-  // Mobil menüyü kapatmak için
+  // Sayfa değiştiğinde mobil menüyü kapat
   useEffect(() => {
     setIsOpen(false)
   }, [pathname])
@@ -72,25 +119,109 @@ export default function Navbar() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
-          {/* Logo */}
-          <div className="flex-shrink-0 flex items-center">
-            <Link 
-              href="/" 
-              className="flex items-center space-x-0"
+          {/* Mobil: Sol Kenar Menü Düğmesi */}
+          <div className="flex items-center md:hidden">
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className={`p-2 rounded-full ${isHomePage ? 'text-white hover:text-gray-300 hover:bg-gray-800/30' : 'text-gray-600 hover:text-gray-700 hover:bg-gray-100'} relative`}
+              aria-label="Ana menüyü aç"
             >
-              <div className="relative h-16 w-44 -mr-10">
-                <Image 
-                  src="/stof.png" 
-                  alt="Stofhamp Logo" 
-                  fill
-                  style={{ objectFit: 'contain' }}
-                  priority
-                />
-              </div>
-              <span className={`text-xl font-bold ${isHomePage ? 'text-white' : 'text-gray-800'} hidden sm:block`}>
-                Stofhamp
-              </span>
-            </Link>
+              {session ? (
+                <div className="h-8 w-8 rounded-full overflow-hidden border-2 border-green-500 bg-green-100 flex items-center justify-center">
+                  {userProfile?.profileImage ? (
+                    <Image 
+                      src={userProfile.profileImage} 
+                      alt={userProfile.name || "Kullanıcı"} 
+                      width={32} 
+                      height={32}
+                      className="object-cover"
+                    />
+                  ) : (
+                    <span className="text-green-600 font-semibold text-sm">
+                      {userProfile?.name ? userProfile.name[0].toUpperCase() : "S"}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              )}
+              {unreadCount > 0 && (
+                <span className="absolute top-0 right-0 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Logo - Mobilde ortada */}
+          <div className="flex-1 flex items-center justify-center md:justify-start">
+            <div className="mx-auto md:mx-0">
+              <Link 
+                href="/" 
+                className="flex items-center"
+              >
+                <div className="relative h-12 w-12 md:h-16 md:w-44">
+                  <Image 
+                    src="/stof.png" 
+                    alt="Stofhamp Logo" 
+                    fill
+                    style={{ objectFit: 'contain' }}
+                    priority
+                  />
+                </div>
+                <span className={`text-xl font-bold ${isHomePage ? 'text-white' : 'text-gray-800'} hidden md:block`}>
+                  Stofhamp
+                </span>
+              </Link>
+            </div>
+          </div>
+
+          {/* Mobil: Hızlı Erişim Sekmeleri */}
+          <div className="flex items-center space-x-1 md:hidden">
+            {session ? (
+              <>
+                <Link 
+                  href="/messages" 
+                  className={`p-2 rounded-full ${isHomePage ? 'text-white hover:bg-white/10' : 'text-gray-600 hover:bg-gray-100'} relative`}
+                >
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                  </svg>
+                  {unreadCount > 0 && (
+                    <span className="absolute top-0 right-0 flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                    </span>
+                  )}
+                </Link>
+                <Link 
+                  href="/favorites" 
+                  className={`p-2 rounded-full ${isHomePage ? 'text-white hover:bg-white/10' : 'text-gray-600 hover:bg-gray-100'}`}
+                >
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                  </svg>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link 
+                  href="/login" 
+                  className={`p-2 rounded-md text-sm font-medium ${isHomePage ? 'text-white hover:bg-white/10' : 'text-gray-600 hover:bg-gray-100'}`}
+                >
+                  Giriş
+                </Link>
+                <Link 
+                  href="/register" 
+                  className="p-2 rounded-md bg-green-600 text-white text-sm font-medium hover:bg-green-700"
+                >
+                  Kayıt
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Desktop Menu */}
@@ -204,114 +335,228 @@ export default function Navbar() {
               </div>
             )}
           </div>
+        </div>
+      </div>
 
-          {/* Mobile Menu Button */}
-          <div className="md:hidden flex items-center">
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className={`inline-flex items-center justify-center p-2 rounded-md ${isHomePage ? 'text-white hover:text-gray-300 hover:bg-gray-800/30' : 'text-gray-400 hover:text-gray-500 hover:bg-gray-100'}`}
+      {/* Mobil Yan Menü */}
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            {/* Karartma Overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="md:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+              onClick={() => setIsOpen(false)}
+            />
+            
+            {/* Kenar Menü */}
+            <motion.div
+              ref={menuRef}
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className={`md:hidden fixed inset-y-0 left-0 z-50 w-72 ${isHomePage ? 'bg-black/90 backdrop-blur-lg text-white' : 'bg-white text-gray-800'} shadow-xl overflow-y-auto`}
             >
-              <span className="sr-only">Menüyü aç</span>
-              {isOpen ? (
-                <svg className="block h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              ) : (
-                <svg className="block h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile Menu */}
-      <div className={`md:hidden ${isOpen ? 'block' : 'hidden'} ${isHomePage ? 'bg-black/80 backdrop-blur-sm' : 'bg-white border-b'}`}>
-        <div className={`px-2 pt-2 pb-3 space-y-1 ${isHomePage ? '' : 'bg-white'}`}>
-          <Link
-            href="/listings"
-            className={`block px-3 py-2 text-base font-medium ${isHomePage ? 'text-white hover:bg-white/10' : 'text-gray-600 hover:text-green-600 hover:bg-gray-50'} rounded-md`}
-          >
-            İlanlar
-          </Link>
-          <Link
-            href="/about"
-            className={`block px-3 py-2 text-base font-medium ${isHomePage ? 'text-white hover:bg-white/10' : 'text-gray-600 hover:text-green-600 hover:bg-gray-50'} rounded-md`}
-          >
-            Hakkımızda
-          </Link>
-          <Link
-            href="/contact"
-            className={`block px-3 py-2 text-base font-medium ${isHomePage ? 'text-white hover:bg-white/10' : 'text-gray-600 hover:text-green-600 hover:bg-gray-50'} rounded-md`}
-          >
-            İletişim
-          </Link>
-
-          {session ? (
-            <>
-              <Link
-                href="/listings/create"
-                className="block px-3 py-2 text-base font-medium text-white bg-green-600 hover:bg-green-700 rounded-md"
-              >
-                İlan Ver
-              </Link>
-              <Link
-                href="/profile"
-                className={`block px-3 py-2 text-base font-medium ${isHomePage ? 'text-white hover:bg-white/10' : 'text-gray-600 hover:text-green-600 hover:bg-gray-50'} rounded-md`}
-              >
-                Profilim
-              </Link>
-              <Link
-                href="/my-listings"
-                className={`block px-3 py-2 text-base font-medium ${isHomePage ? 'text-white hover:bg-white/10' : 'text-gray-600 hover:text-green-600 hover:bg-gray-50'} rounded-md`}
-              >
-                İlanlarım
-              </Link>
-              <Link
-                href="/favorites"
-                className={`block px-3 py-2 text-base font-medium ${isHomePage ? 'text-white hover:bg-white/10' : 'text-gray-600 hover:text-green-600 hover:bg-gray-50'} rounded-md`}
-              >
-                Favorilerim
-              </Link>
-              <Link
-                href="/messages"
-                className={`block px-3 py-2 text-base font-medium ${isHomePage ? 'text-white hover:bg-white/10' : 'text-gray-600 hover:text-green-600 hover:bg-gray-50'} rounded-md`}
-              >
-                <div className="relative flex items-center">
-                  <span>Mesajlarım</span>
-                  {unreadCount > 0 && (
-                    <span className="ml-2 inline-flex rounded-full h-4 w-4 bg-red-500 text-white text-xs items-center justify-center">
-                      {unreadCount}
-                    </span>
-                  )}
+              {session ? (
+                <div className={`p-5 border-b ${isHomePage ? 'border-gray-700/50' : 'border-gray-200'}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="h-12 w-12 rounded-full overflow-hidden border-2 border-green-500 bg-green-100 flex items-center justify-center">
+                        {userProfile?.profileImage ? (
+                          <Image 
+                            src={userProfile.profileImage} 
+                            alt={userProfile.name || "Kullanıcı"} 
+                            width={48} 
+                            height={48}
+                            className="object-cover"
+                          />
+                        ) : (
+                          <span className="text-green-600 font-bold text-xl">
+                            {userProfile?.name ? userProfile.name[0].toUpperCase() : "S"}
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <div className="font-medium truncate max-w-[140px]">{userProfile?.name || session.user?.name || 'Kullanıcı'}</div>
+                        <div className="text-xs text-gray-400 truncate max-w-[140px]">{userProfile?.email || session.user?.email}</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setIsOpen(false)}
+                      className={`p-2 rounded-md ${isHomePage ? 'text-white hover:bg-white/10' : 'text-gray-500 hover:bg-gray-100'}`}
+                    >
+                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-              </Link>
-              <button
-                onClick={() => signOut()}
-                className={`block w-full text-left px-3 py-2 text-base font-medium text-red-600 hover:text-red-700 ${isHomePage ? 'hover:bg-white/10' : 'hover:bg-gray-50'} rounded-md`}
-              >
-                Çıkış Yap
-              </button>
-            </>
-          ) : (
-            <>
-              <Link
-                href="/login"
-                className={`block px-3 py-2 text-base font-medium ${isHomePage ? 'text-white hover:bg-white/10' : 'text-gray-600 hover:text-green-600 hover:bg-gray-50'} rounded-md`}
-              >
-                Giriş Yap
-              </Link>
-              <Link
-                href="/register"
-                className="block px-3 py-2 text-base font-medium text-white bg-green-600 hover:bg-green-700 rounded-md"
-              >
-                Kayıt Ol
-              </Link>
-            </>
-          )}
-        </div>
-      </div>
+              ) : (
+                <div className="p-5 border-b border-gray-700/50 flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="relative h-8 w-8 rounded-full overflow-hidden bg-green-600 flex items-center justify-center mr-2">
+                      <span className="text-white text-lg font-bold">S</span>
+                    </div>
+                    <span>Merhaba, misafir</span>
+                  </div>
+                  <button
+                    onClick={() => setIsOpen(false)}
+                    className={`p-2 rounded-md ${isHomePage ? 'text-white hover:bg-white/10' : 'text-gray-500 hover:bg-gray-100'}`}
+                  >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+              
+              {/* Menü Öğeleri */}
+              <div className="p-5 space-y-2">
+                <Link
+                  href="/listings"
+                  className="block px-3 py-2.5 rounded-lg font-medium hover:bg-green-600 hover:text-white transition-colors"
+                >
+                  <div className="flex items-center space-x-3">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                    <span>İlanlar</span>
+                  </div>
+                </Link>
+                
+                <Link
+                  href="/about"
+                  className="block px-3 py-2.5 rounded-lg font-medium hover:bg-green-600 hover:text-white transition-colors"
+                >
+                  <div className="flex items-center space-x-3">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Hakkımızda</span>
+                  </div>
+                </Link>
+                
+                <Link
+                  href="/contact"
+                  className="block px-3 py-2.5 rounded-lg font-medium hover:bg-green-600 hover:text-white transition-colors"
+                >
+                  <div className="flex items-center space-x-3">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <span>İletişim</span>
+                  </div>
+                </Link>
+                
+                <Link
+                  href="/messages"
+                  className="block px-3 py-2.5 rounded-lg font-medium hover:bg-green-600 hover:text-white transition-colors"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="relative">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                      </svg>
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </div>
+                    <span>Mesajlar</span>
+                  </div>
+                </Link>
+                
+                {session && (
+                  <>
+                    <Link
+                      href="/my-listings"
+                      className="block px-3 py-2.5 rounded-lg font-medium hover:bg-green-600 hover:text-white transition-colors"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        <span>İlanlarım</span>
+                      </div>
+                    </Link>
+                    
+                    <Link
+                      href="/favorites"
+                      className="block px-3 py-2.5 rounded-lg font-medium hover:bg-green-600 hover:text-white transition-colors"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                        </svg>
+                        <span>Favorilerim</span>
+                      </div>
+                    </Link>
+                    
+                    <Link
+                      href="/profile"
+                      className="block px-3 py-2.5 rounded-lg font-medium hover:bg-green-600 hover:text-white transition-colors"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        <span>Profilim</span>
+                      </div>
+                    </Link>
+                  </>
+                )}
+              </div>
+              
+              {/* Kullanıcı Hesabı Bölümü */}
+              <div className={`border-t ${isHomePage ? 'border-gray-700/50' : 'border-gray-200'} mt-2 pt-4 px-5 pb-8`}>
+                {session ? (
+                  <>
+                    <Link
+                      href="/listings/create"
+                      className="block w-full px-4 py-3 bg-green-600 text-center text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      İlan Ver
+                    </Link>
+                    
+                    <button
+                      onClick={() => signOut()}
+                      className="w-full mt-3 text-left px-3 py-2.5 rounded-lg font-medium text-red-500 hover:bg-red-500 hover:text-white transition-colors"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        <span>Çıkış Yap</span>
+                      </div>
+                    </button>
+                  </>
+                ) : (
+                  <div className="space-y-3">
+                    <Link
+                      href="/login"
+                      className="block px-4 py-2.5 border border-green-600 text-center font-medium rounded-lg hover:bg-green-600 hover:text-white transition-colors"
+                    >
+                      Giriş Yap
+                    </Link>
+                    
+                    <Link
+                      href="/register"
+                      className="block px-4 py-2.5 bg-green-600 text-center text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      Kayıt Ol
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </nav>
   )
 } 

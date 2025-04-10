@@ -38,6 +38,8 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           email: user.email,
           name: user.name,
+          image: user.profileImage,
+          company: user.company
         }
       }
     })
@@ -53,12 +55,16 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id
+        token.image = user.image
+        token.company = user.company
       }
       return token
     },
     async session({ session, token }) {
       if (session?.user) {
         session.user.id = token.id as string
+        session.user.image = token.image as string
+        session.user.company = token.company as string
       }
       return session
     }
