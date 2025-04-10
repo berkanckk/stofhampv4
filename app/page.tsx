@@ -182,22 +182,22 @@ export default function Home() {
         </div>
 
         {/* Content */}
-        <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-4xl mx-auto text-center">
+        <div className="container mx-auto px-4 relative z-10 pt-20 sm:pt-16 mt-0">
+          <div className="max-w-4xl mx-auto text-center pt-10 sm:pt-0">
             <motion.h1 
-              className="mb-8 text-white drop-shadow-2xl"
+              className="mb-6 md:mb-8 text-white drop-shadow-2xl pt-6 sm:pt-0"
               variants={titleVariants}
               initial="hidden"
               animate="visible"
             >
               <motion.span 
-                className="block text-3xl sm:text-4xl md:text-5xl font-light mb-2"
+                className="block text-2xl sm:text-3xl md:text-5xl font-light mb-1 sm:mb-2"
                 variants={firstLineVariants}
               >
                 Stok Fazlası
               </motion.span>
               <motion.span 
-                className="block text-4xl sm:text-5xl md:text-7xl font-extrabold mb-8"
+                className="block text-3xl sm:text-4xl md:text-7xl font-extrabold mb-4 sm:mb-8"
                 variants={secondLineVariants}
               >
                 Ham Madde Pazarı
@@ -205,7 +205,7 @@ export default function Home() {
             </motion.h1>
 
             {/* Navigation Tabs */}
-            <div className="flex justify-center mb-8 text-white">
+            <div className="flex flex-wrap justify-center mb-6 md:mb-8 text-white">
               <motion.div
                 className="relative"
                 initial={{ opacity: 0, y: -20 }}
@@ -214,21 +214,21 @@ export default function Home() {
               >
                 <Link 
                   href="/listings" 
-                  className="mx-6 text-xl font-medium relative group"
+                  className="mx-3 sm:mx-6 text-lg sm:text-xl font-medium relative group mb-2 sm:mb-0 inline-block"
                 >
                   <span className="group-hover:text-green-400 transition-colors duration-300">Hepsi</span>
                   <span className="absolute -bottom-2 left-0 w-full h-0.5 bg-green-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
                 </Link>
                 <Link 
                   href="/listings?condition=USED" 
-                  className="mx-6 text-xl font-medium relative group"
+                  className="mx-3 sm:mx-6 text-lg sm:text-xl font-medium relative group mb-2 sm:mb-0 inline-block"
                 >
                   <span className="group-hover:text-green-400 transition-colors duration-300">İkinci El</span>
                   <span className="absolute -bottom-2 left-0 w-full h-0.5 bg-green-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
                 </Link>
                 <Link 
                   href="/listings?condition=NEW" 
-                  className="mx-6 text-xl font-medium relative group"
+                  className="mx-3 sm:mx-6 text-lg sm:text-xl font-medium relative group mb-2 sm:mb-0 inline-block"
                 >
                   <span className="group-hover:text-green-400 transition-colors duration-300">Sıfır</span>
                   <span className="absolute -bottom-2 left-0 w-full h-0.5 bg-green-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
@@ -238,7 +238,7 @@ export default function Home() {
 
             {/* Search Form */}
             <motion.div 
-              className="max-w-5xl mx-auto mb-12"
+              className="max-w-5xl mx-auto mb-8 md:mb-12"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1, duration: 0.6 }}

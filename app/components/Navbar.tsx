@@ -87,7 +87,7 @@ export default function Navbar() {
                   priority
                 />
               </div>
-              <span className={`text-xl font-bold ${isHomePage ? 'text-white' : 'text-gray-800'}`}>
+              <span className={`text-xl font-bold ${isHomePage ? 'text-white' : 'text-gray-800'} hidden sm:block`}>
                 Stofhamp
               </span>
             </Link>
@@ -106,6 +106,12 @@ export default function Navbar() {
               className={`${isHomePage ? 'text-white' : 'text-gray-600'} hover:text-green-600 px-3 py-2 text-sm font-medium transition-colors`}
             >
               Hakkımızda
+            </Link>
+            <Link 
+              href="/contact"
+              className={`${isHomePage ? 'text-white' : 'text-gray-600'} hover:text-green-600 px-3 py-2 text-sm font-medium transition-colors`}
+            >
+              İletişim
             </Link>
             <Link
               href="/messages"
