@@ -248,8 +248,8 @@ export default function EditListingForm({ id, initialData }: EditListingFormProp
                         className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
                         required
                       >
-                        <option value="NEW">Yeni</option>
-                        <option value="USED">Kullanılmış</option>
+                        <option value="NEW">Sıfır</option>
+                        <option value="USED">İkinci El</option>
                       </select>
                     </div>
                   </div>

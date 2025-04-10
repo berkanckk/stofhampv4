@@ -199,7 +199,7 @@ export default function FavoritesPage() {
                         ? 'bg-green-100 text-green-800'
                         : 'bg-yellow-100 text-yellow-800'
                     }`}>
-                      {favorite.listing.condition === 'NEW' ? 'Yeni' : 'Kullanılmış'}
+                      {favorite.listing.condition === 'NEW' ? 'Sıfır' : 'İkinci El'}
                     </span>
                   </div>
                 </div>

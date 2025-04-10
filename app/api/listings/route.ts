@@ -5,7 +5,7 @@ import { authOptions } from '../../lib/auth'
 import { Prisma } from '@prisma/client'
 import { globalCache } from '@/app/lib/cache'
 
-const ITEMS_PER_PAGE = 12
+const ITEMS_PER_PAGE = 9
 const CACHE_TTL = 60 * 1000 // 1 dakika
 const CACHE_KEYS = {
   CATEGORIES: 'categories',
@@ -106,9 +106,9 @@ export async function GET(request: Request) {
     if (sortBy === 'oldest') {
       orderBy.createdAt = 'asc'
     } else if (sortBy === 'priceDesc') {
-      orderBy.price = 'asc' // En düşük fiyattan en yükseğe
-    } else if (sortBy === 'priceAsc') {
       orderBy.price = 'desc' // En yüksek fiyattan en düşüğe
+    } else if (sortBy === 'priceAsc') {
+      orderBy.price = 'asc' // En düşük fiyattan en yükseğe
     } else {
       // default: newest
       orderBy.createdAt = 'desc'
@@ -141,10 +141,22 @@ export async function GET(request: Request) {
     }
 
     if (filters.search) {
-      where.OR = [
-        { title: { contains: filters.search, mode: 'insensitive' } },
-        { description: { contains: filters.search, mode: 'insensitive' } }
-      ]
+      const searchTerms = filters.search.trim().split(/\s+/); // Arama terimini boşluklardan ayır
+      
+      // Her kelime için ayrı bir arama koşulu oluştur
+      const searchConditions = searchTerms.map(term => {
+        return {
+          OR: [
+            { title: { contains: term, mode: 'insensitive' as Prisma.QueryMode } },
+            { description: { contains: term, mode: 'insensitive' as Prisma.QueryMode } }
+          ]
+        } as Prisma.ListingWhereInput;
+      });
+      
+      // Tüm koşulları birleştir (AND ile)
+      if (searchConditions.length > 0) {
+        where.AND = searchConditions;
+      }
     }
 
     if (filters.location) {
@@ -156,10 +168,9 @@ export async function GET(request: Request) {
     // İlanları ve toplam sayıyı paralel olarak al
     const [items, totalItems] = await Promise.all([
       prisma.listing.findMany({
-        take: ITEMS_PER_PAGE,
-        skip: cursor ? 1 : (page - 1) * ITEMS_PER_PAGE,
-        cursor: cursor ? { id: cursor } : undefined,
         where,
+        take: ITEMS_PER_PAGE,
+        skip: (page - 1) * ITEMS_PER_PAGE,
         orderBy,
         include: {
           seller: {
@@ -199,6 +210,8 @@ export async function GET(request: Request) {
         nextCursor
       }
     }
+
+    console.log(`Sayfalama bilgileri: Sayfa ${page}/${totalPages}, Toplam öğe: ${totalItems}, Sayfa başına: ${ITEMS_PER_PAGE}`)
 
     // Composite cache'e kaydet
     globalCache.setComposite(CACHE_KEYS.LISTINGS, compositeKey, responseData)

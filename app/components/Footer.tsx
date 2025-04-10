@@ -1,8 +1,39 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
+
+// Kategori arayüzünü tanımla
+interface Category {
+  id: string
+  name: string
+  description?: string
+  _count?: {
+    listings: number
+  }
+}
 
 export default function Footer() {
+  const [categories, setCategories] = useState<Category[]>([])
+
+  // Kategorileri yükle
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('/api/categories')
+        const result = await response.json()
+        
+        if (result.success) {
+          setCategories(result.data)
+        }
+      } catch (error) {
+        console.error('Kategori yükleme hatası:', error)
+      }
+    }
+    
+    fetchCategories()
+  }, [])
+
   return (
     <footer className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white py-8 relative">
       {/* Animasyonlu arka plan deseni */}
@@ -52,26 +83,21 @@ export default function Footer() {
           <div className="space-y-2 text-center md:text-left transform hover:-translate-y-1 transition-transform duration-300">
             <h4 className="text-base font-semibold mb-1 text-green-400">Kategoriler</h4>
             <ul className="space-y-1">
-              <li>
-                <Link href="/listings?category=metal" className="text-gray-400 hover:text-green-400 transition-colors duration-300 block text-sm">
-                  Metal
-                </Link>
-              </li>
-              <li>
-                <Link href="/listings?category=plastic" className="text-gray-400 hover:text-green-400 transition-colors duration-300 block text-sm">
-                  Plastik
-                </Link>
-              </li>
-              <li>
-                <Link href="/listings?category=wood" className="text-gray-400 hover:text-green-400 transition-colors duration-300 block text-sm">
-                  Ahşap
-                </Link>
-              </li>
-              <li>
-                <Link href="/listings?category=textile" className="text-gray-400 hover:text-green-400 transition-colors duration-300 block text-sm">
-                  Tekstil
-                </Link>
-              </li>
+              {categories.slice(0, 5).map(category => (
+                <li key={category.id}>
+                  <Link 
+                    href={`/listings?category=${category.id}`} 
+                    className="text-gray-400 hover:text-green-400 transition-colors duration-300 block text-sm"
+                  >
+                    {category.name}
+                  </Link>
+                </li>
+              ))}
+              {categories.length === 0 && (
+                <>
+                  <li><span className="text-gray-500 text-sm">Yükleniyor...</span></li>
+                </>
+              )}
             </ul>
           </div>
 

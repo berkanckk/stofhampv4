@@ -193,6 +193,16 @@ export async function POST(
       }
     });
 
+    // Konuşmanın updatedAt değerini güncelle - Mesaj listesinde en üste çıkması için
+    await prisma.conversation.update({
+      where: {
+        id: conversationId
+      },
+      data: {
+        updatedAt: new Date()
+      }
+    });
+
     // Cache'i temizle
     await invalidateMessagesCache(conversationId);
 

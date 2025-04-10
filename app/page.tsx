@@ -456,20 +456,20 @@ export default function Home() {
       </section>
 
       {/* Featured Listings Section */}
-      <section className="py-16 bg-gradient-to-br from-gray-50 to-white">
+      <section className="py-20 bg-gradient-to-br from-gray-50 via-white to-gray-100">
         <div className="container mx-auto px-4">
           <div className="flex flex-col sm:flex-row justify-between items-center mb-12">
-            <div>
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2">
+            <div className="relative mb-6 sm:mb-0">
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-800 relative z-10">
                 Öne Çıkan İlanlar
               </h2>
-              <div className="w-20 h-1.5 bg-green-500 rounded-full"></div>
+              <div className="absolute -bottom-3 left-0 w-36 h-2 bg-green-500 rounded-full opacity-70"></div>
             </div>
             <Link 
               href="/listings" 
-              className="mt-4 sm:mt-0 text-green-600 hover:text-green-700 font-medium flex items-center transition-colors group"
+              className="inline-flex items-center px-6 py-2 rounded-full bg-white shadow-md border border-gray-100 text-green-600 hover:text-white hover:bg-green-600 transition-all duration-300 group"
             >
-              <span className="mr-2 group-hover:underline">Tümünü Gör</span>
+              <span className="mr-2 font-medium">Tümünü Gör</span>
               <svg className="w-5 h-5 transform group-hover:translate-x-1 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
               </svg>
@@ -479,16 +479,16 @@ export default function Home() {
           {loadingListings ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="relative bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 p-4 h-96">
+                <div key={i} className="relative bg-white rounded-xl shadow-md overflow-hidden p-4 h-96 border border-gray-100">
                   <div className="animate-pulse">
                     <div className="h-48 bg-gray-200 rounded-lg mb-4"></div>
-                    <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
-                    <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
-                    <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
-                    <div className="h-4 bg-gray-200 rounded w-2/3 mb-4"></div>
+                    <div className="h-4 bg-gray-200 rounded-full w-1/4 mb-2"></div>
+                    <div className="h-8 bg-gray-200 rounded-lg w-3/4 mb-4"></div>
+                    <div className="h-4 bg-gray-200 rounded-full w-full mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded-full w-2/3 mb-4"></div>
                     <div className="flex justify-between">
-                      <div className="h-6 bg-gray-200 rounded w-1/3"></div>
-                      <div className="h-6 bg-gray-200 rounded w-1/4"></div>
+                      <div className="h-6 bg-gray-200 rounded-full w-1/3"></div>
+                      <div className="h-6 bg-gray-200 rounded-full w-1/4"></div>
                     </div>
                   </div>
                 </div>
@@ -499,20 +499,29 @@ export default function Home() {
               {featuredListings.map((listing) => (
                 <motion.div 
                   key={listing.id}
-                  whileHover={{ y: -10, boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)" }}
+                  whileHover={{ y: -8 }}
                   transition={{ type: "spring", stiffness: 300 }}
-                  className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 transform"
+                  className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-100 hover:shadow-xl hover:border-green-200 transition-all duration-300 transform"
                 >
                   <Link href={`/listings/${listing.id}`} className="block h-full relative">
                     <div className="relative h-56 overflow-hidden">
-                      <div className="absolute top-2 left-2 bg-green-100 text-green-800 text-xs font-semibold px-3 py-1.5 rounded-full z-10 shadow-sm">
-                        {listing.condition === 'NEW' ? 'Sıfır' : 'İkinci El'}
+                      <div className="absolute top-3 left-3 z-10">
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${listing.condition === 'NEW' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
+                          {listing.condition === 'NEW' ? 'Sıfır' : 'İkinci El'}
+                        </span>
                       </div>
-                      <div className="absolute top-2 right-2 bg-white rounded-full p-2 shadow-md z-10 hover:bg-red-50 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 hover:text-red-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                        </svg>
+                      <div className="absolute top-3 right-3 z-10">
+                        <motion.button 
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                          className="bg-white/80 backdrop-blur-sm rounded-full p-2 shadow-sm hover:bg-red-50 transition-colors"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 hover:text-red-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                          </svg>
+                        </motion.button>
                       </div>
+                      <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/20 group-hover:opacity-70 transition-opacity"></div>
                       <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
                         {listing.images && listing.images.length > 0 ? (
                           <Image 
@@ -520,7 +529,7 @@ export default function Home() {
                             alt={listing.title} 
                             width={500} 
                             height={300} 
-                            className="w-full h-full object-cover transition-transform duration-700 hover:scale-110"
+                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                           />
                         ) : (
                           <div className="w-full h-full bg-gray-200 flex items-center justify-center">
@@ -533,18 +542,18 @@ export default function Home() {
                     </div>
                     <div className="p-6">
                       <div className="flex justify-between items-center mb-3">
-                        <span className="text-sm font-medium text-green-600 bg-green-50 px-2.5 py-1 rounded-md">
+                        <span className="inline-flex items-center text-sm font-medium text-green-700 bg-green-50 px-3 py-1 rounded-full shadow-sm">
                           {listing.category?.name || 'Diğer'}
                         </span>
-                        <span className="text-xs text-gray-500">{formatDate(listing.createdAt)}</span>
+                        <span className="text-xs text-gray-500 font-medium">{formatDate(listing.createdAt)}</span>
                       </div>
-                      <h3 className="text-xl font-bold mb-3 text-gray-900 line-clamp-1 hover:text-green-700 transition-colors">{listing.title}</h3>
+                      <h3 className="text-xl font-bold mb-3 text-gray-900 line-clamp-1 group-hover:text-green-700 transition-colors">{listing.title}</h3>
                       <p className="text-gray-600 text-sm mb-4 line-clamp-2 h-10">
                         {listing.description}
                       </p>
                       <div className="pt-3 border-t border-gray-100 flex justify-between items-center">
                         <span className="text-xl font-bold text-green-700">{listing.price.toLocaleString('tr-TR')} ₺</span>
-                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-md flex items-center">
+                        <span className="text-xs text-gray-500 bg-gray-50 px-3 py-1 rounded-full flex items-center shadow-sm">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -558,8 +567,8 @@ export default function Home() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-16 bg-white rounded-xl shadow-sm">
-              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <div className="text-center py-16 bg-white rounded-xl shadow-sm border border-gray-100">
+              <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
                 <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -568,7 +577,7 @@ export default function Home() {
               <p className="text-gray-500 text-lg mb-8 max-w-md mx-auto">Platformda henüz ilan yok. İlk ilanı oluşturarak başlayabilirsiniz.</p>
               <Link 
                 href="/listings/create" 
-                className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition-colors text-base font-medium shadow-sm hover:shadow-md"
+                className="inline-flex items-center bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-lg text-base font-medium shadow-sm hover:shadow-md transition-all duration-300"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />

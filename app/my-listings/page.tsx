@@ -242,7 +242,7 @@ export default function MyListingsPage() {
                           ? 'bg-green-50 text-green-700' 
                           : 'bg-yellow-50 text-yellow-700'
                       }`}>
-                        {listing.condition === 'NEW' ? 'Yeni' : 'Kullanılmış'}
+                        {listing.condition === 'NEW' ? 'Sıfır' : 'İkinci El'}
                       </span>
                     </div>
 

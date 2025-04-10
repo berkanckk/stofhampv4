@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback, Suspense } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import ListingImage from '@/app/components/ListingImage'
@@ -64,6 +64,7 @@ interface Filters {
 
 function ListingsContent() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const [listings, setListings] = useState<Listing[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [materialTypes, setMaterialTypes] = useState<MaterialType[]>([])
@@ -93,6 +94,10 @@ function ListingsContent() {
   const [sortBy, setSortBy] = useState(searchParams.get('sortBy') || 'newest')
   const [currentImageIndexes, setCurrentImageIndexes] = useState<Record<string, number>>({})
   const [pendingSortBy, setPendingSortBy] = useState(searchParams.get('sortBy') || 'newest')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
+  const itemsPerPage = 9 // Backend ile aynı olmalı
 
   const observer = useRef<IntersectionObserver | null>(null)
   const lastListingElementRef = useCallback((node: Element | null) => {
@@ -132,6 +137,8 @@ function ListingsContent() {
         }
       });
 
+      console.log('Fetching listings with params:', params.toString());
+
       const response = await fetch(`/api/listings?${params.toString()}`, {
         headers: {
           'Cache-Control': 'no-cache'
@@ -151,6 +158,11 @@ function ListingsContent() {
         setCategories(data.data.categories);
         setMaterialTypes(data.data.materialTypes);
       }
+
+      // Sayfalama bilgilerini güncelle
+      setCurrentPage(data.data.pagination.currentPage);
+      setTotalPages(data.data.pagination.totalPages);
+      setTotalItems(data.data.pagination.totalItems);
 
       setError(null);
     } catch (error) {
@@ -237,6 +249,149 @@ function ListingsContent() {
       [listingId]: ((prev[listingId] || 0) - 1 + totalImages) % totalImages,
     }))
   }
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages) return;
+    
+    console.log(`Sayfa değiştiriliyor: ${currentPage} -> ${newPage} (Toplam: ${totalPages})`);
+    setCurrentPage(newPage);
+    fetchListings(newPage);
+    
+    // Sayfa değiştiğinde sayfanın üstüne scroll yapalım
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  }
+
+  // Sayfalama bileşeni
+  const Pagination = () => {
+    if (totalPages <= 1) return null; // Tek sayfa varsa sayfalama gösterme
+    
+    // Gösterilecek sayfa numaralarını hesapla
+    const pageNumbers = [];
+    const maxPageButtons = 5; // Gösterilecek maksimum sayfa butonu sayısı
+    
+    // Sayfa butonlarını oluştur
+    let startPage = Math.max(1, currentPage - Math.floor(maxPageButtons / 2));
+    let endPage = Math.min(totalPages, startPage + maxPageButtons - 1);
+    
+    // Eğer sondan başlıyorsak ayarla
+    if (endPage - startPage + 1 < maxPageButtons) {
+      startPage = Math.max(1, endPage - maxPageButtons + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+    
+    // Son sayfa gösterimini hesapla
+    const lastItemOnPage = Math.min(currentPage * itemsPerPage, totalItems);
+    const firstItemOnPage = totalItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
+    
+    return (
+      <div className="mt-10 flex flex-col items-center space-y-4">
+        <div className="text-sm text-gray-500">
+          {totalItems > 0 ? (
+            `Toplam ${totalItems} ilan içerisinden ${firstItemOnPage} - ${lastItemOnPage} arası gösteriliyor`
+          ) : (
+            `Hiç ilan bulunamadı`
+          )}
+        </div>
+        
+        <nav className="flex items-center space-x-1">
+          {/* İlk Sayfa */}
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1}
+            className={`px-3 py-2 rounded-md ${
+              currentPage === 1 
+                ? 'text-gray-400 cursor-not-allowed' 
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+            aria-label="İlk Sayfa"
+            title="İlk Sayfa"
+          >
+            <span className="sr-only">İlk Sayfa</span>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+            </svg>
+          </button>
+          
+          {/* Önceki Sayfa */}
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className={`px-3 py-2 rounded-md ${
+              currentPage === 1 
+                ? 'text-gray-400 cursor-not-allowed' 
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+            aria-label="Önceki Sayfa"
+            title="Önceki Sayfa"
+          >
+            <span className="sr-only">Önceki</span>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          
+          {/* Sayfa Numaraları */}
+          {pageNumbers.map(number => (
+            <button
+              key={number}
+              onClick={() => handlePageChange(number)}
+              className={`px-4 py-2 rounded-md ${
+                currentPage === number
+                  ? 'bg-green-600 text-white font-medium shadow-sm'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+              aria-current={currentPage === number ? 'page' : undefined}
+              aria-label={`Sayfa ${number}`}
+            >
+              {number}
+            </button>
+          ))}
+          
+          {/* Sonraki Sayfa */}
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className={`px-3 py-2 rounded-md ${
+              currentPage === totalPages
+                ? 'text-gray-400 cursor-not-allowed'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+            aria-label="Sonraki Sayfa"
+            title="Sonraki Sayfa"
+          >
+            <span className="sr-only">Sonraki</span>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+          
+          {/* Son Sayfa */}
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages}
+            className={`px-3 py-2 rounded-md ${
+              currentPage === totalPages
+                ? 'text-gray-400 cursor-not-allowed'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+            aria-label="Son Sayfa"
+            title="Son Sayfa"
+          >
+            <span className="sr-only">Son Sayfa</span>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+            </svg>
+          </button>
+        </nav>
+      </div>
+    );
+  };
 
   if (loading && listings.length === 0) {
     return (
@@ -429,20 +584,29 @@ function ListingsContent() {
                   </div>
                 </div>
 
-                {/* Filtre Butonları */}
-                <div className="pt-2 space-y-2">
+                {/* Filtre Altı Butonlar */}
+                <div className="mt-8 flex flex-col sm:flex-row gap-3 items-center">
                   <button
                     onClick={applyAllFilters}
-                    className="w-full bg-gradient-to-r from-green-600 to-green-500 text-white py-3 rounded-xl text-sm font-medium hover:from-green-700 hover:to-green-600 transition-all shadow-sm hover:shadow transform hover:-translate-y-0.5"
+                    className="w-full sm:flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-medium py-3 px-4 rounded-xl shadow-sm hover:shadow transition-all flex justify-center items-center"
                   >
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                    </svg>
                     Filtreleri Uygula
                   </button>
-                  <button
-                    onClick={clearFilters}
-                    className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl text-sm font-medium hover:bg-gray-200 transition-all"
-                  >
-                    Filtreleri Temizle
-                  </button>
+                  
+                  {(pendingFilters.category || pendingFilters.material || pendingFilters.condition || pendingFilters.minPrice || pendingFilters.maxPrice || pendingFilters.location || pendingFilters.search) && (
+                    <button
+                      onClick={clearFilters}
+                      className="w-full sm:w-auto text-red-600 font-medium py-2 px-4 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 transition-colors flex justify-center items-center"
+                    >
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      Temizle
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -452,39 +616,30 @@ function ListingsContent() {
           <div className="flex-1">
             {/* Üst Bar */}
             <div className="bg-white rounded-2xl shadow-lg p-4 mb-6">
-              <div className="flex flex-col md:flex-row md:items-center justify-between">
-                <div className="mb-4 md:mb-0">
-                  <div className="flex items-center space-x-2">
-                    <h2 className="text-xl font-bold text-gray-900">
-                      {listings.length} İlan Bulundu
-                    </h2>
-                    {activeFilters.category && (
-                      <span className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium">
-                        {categories.find(c => c.id === activeFilters.category)?.name}
-                      </span>
-                    )}
-                    {activeFilters.material && (
-                      <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
-                        {materialTypes.find(m => m.id === activeFilters.material)?.name}
-                      </span>
-                    )}
-                    {activeFilters.condition && (
-                      <span className="px-3 py-1 bg-yellow-50 text-yellow-700 rounded-full text-xs font-medium">
-                        {activeFilters.condition === 'NEW' ? 'Sıfır' : 'İkinci El'}
-                      </span>
-                    )}
-                  </div>
-                  {(activeFilters.category || activeFilters.material || activeFilters.condition || activeFilters.minPrice || activeFilters.maxPrice || activeFilters.location || activeFilters.search) && (
-                    <div className="text-sm text-gray-500 mt-1">
-                      Aktif filtreler:
-                      {activeFilters.search && ` "${activeFilters.search}"`}
-                      {activeFilters.location && ` • ${activeFilters.location}`}
-                      {activeFilters.minPrice && ` • Min: ${activeFilters.minPrice}₺`}
-                      {activeFilters.maxPrice && ` • Max: ${activeFilters.maxPrice}₺`}
-                    </div>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <h1 className="text-xl sm:text-2xl font-semibold text-gray-800">
+                  <span className="text-green-600 font-bold">{totalItems}</span> İlan Bulundu
+                </h1>
+                <div className="flex flex-wrap items-center gap-2">
+                  {activeFilters.category && (
+                    <span className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium">
+                      {categories.find(c => c.id === activeFilters.category)?.name}
+                    </span>
+                  )}
+                  {activeFilters.material && (
+                    <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
+                      {materialTypes.find(m => m.id === activeFilters.material)?.name}
+                    </span>
+                  )}
+                  {activeFilters.condition && (
+                    <span className="px-3 py-1 bg-yellow-50 text-yellow-700 rounded-full text-xs font-medium">
+                      {activeFilters.condition === 'NEW' ? 'Sıfır' : 'İkinci El'}
+                    </span>
                   )}
                 </div>
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              </div>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex items-center gap-2">
                   <div className="relative">
                     <select
                       value={pendingSortBy}
@@ -502,23 +657,36 @@ function ListingsContent() {
                       </svg>
                     </div>
                   </div>
-                  {(activeFilters.category || activeFilters.material || activeFilters.condition || activeFilters.minPrice || activeFilters.maxPrice || activeFilters.location || activeFilters.search) && (
+                  
+                  {pendingSortBy !== sortBy && (
                     <button
-                      onClick={clearFilters}
-                      className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-colors"
+                      onClick={applyAllFilters}
+                      className="inline-flex items-center justify-center p-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors"
+                      title="Sıralamayı Uygula"
                     >
-                      <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                       </svg>
-                      Tüm Filtreleri Temizle
                     </button>
                   )}
                 </div>
+                
+                {(activeFilters.category || activeFilters.material || activeFilters.condition || activeFilters.minPrice || activeFilters.maxPrice || activeFilters.location || activeFilters.search) && (
+                  <button
+                    onClick={clearFilters}
+                    className="inline-flex items-center justify-center px-3 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-colors"
+                  >
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Tüm Filtreleri Temizle
+                  </button>
+                )}
               </div>
             </div>
 
             {/* İlan Listesi */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               {listings.map((listing, index) => (
                 <motion.div
                   key={listing.id}
@@ -657,12 +825,8 @@ function ListingsContent() {
               ))}
             </div>
 
-            {/* Yükleniyor */}
-            {loading && (
-              <div className="flex justify-center my-8">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600"></div>
-              </div>
-            )}
+            {/* Sayfalama */}
+            {!loading && listings.length > 0 && <Pagination />}
 
             {/* Hata Mesajı */}
             {error && (
