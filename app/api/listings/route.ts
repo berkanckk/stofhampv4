@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '../../lib/auth'
 import { Prisma } from '@prisma/client'
 import { globalCache } from '@/app/lib/cache'
+import { generateSlug } from '@/app/lib/utils'
 
 const ITEMS_PER_PAGE = 9
 const CACHE_TTL = 60 * 1000 // 1 dakika
@@ -257,10 +258,32 @@ export async function POST(request: Request) {
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + 30)
 
+    // Slug oluştur
+    let slug = generateSlug(body.title)
+    let slugExists = true
+    let slugCounter = 1
+
+    // Eğer slug zaten varsa sonuna sayı ekle
+    while (slugExists) {
+      const existingListing = await prisma.listing.findUnique({
+        where: { slug: slugCounter > 1 ? `${slug}-${slugCounter}` : slug }
+      })
+
+      if (!existingListing) {
+        slugExists = false
+        if (slugCounter > 1) {
+          slug = `${slug}-${slugCounter}`
+        }
+      } else {
+        slugCounter++
+      }
+    }
+
     // Yeni ilanı oluştur
     const listing = await prisma.listing.create({
       data: {
         ...body,
+        slug,
         sellerId: session.user.id,
         expiresAt
       }

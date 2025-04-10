@@ -48,6 +48,7 @@ interface Listing {
   _count: {
     favorites: number
   }
+  slug: string
 }
 
 type FilterKey = 'category' | 'material' | 'condition' | 'minPrice' | 'maxPrice' | 'location' | 'search';
@@ -173,7 +174,38 @@ function ListingsContent() {
     }
   };
 
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages) return;
+    
+    console.log(`Sayfa değiştiriliyor: ${currentPage} -> ${newPage} (Toplam: ${totalPages})`);
+    
+    // URL'i güncelle
+    const params = new URLSearchParams(searchParams.toString());
+    if (newPage === 1) {
+      params.delete('page');
+    } else {
+      params.set('page', newPage.toString());
+    }
+    
+    // Diğer parametreleri koru
+    const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
+    router.push(newUrl);
+    
+    setCurrentPage(newPage);
+    fetchListings(newPage);
+    
+    // Sayfa değiştiğinde sayfanın üstüne scroll yapalım
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  }
+
   useEffect(() => {
+    // URL'den sayfa numarasını al
+    const pageParam = searchParams.get('page');
+    const initialPage = pageParam ? parseInt(pageParam) : 1;
+    
     // URL'den gelen parametreleri kontrol et ve filtreleri güncelle
     const urlFilters: Filters = {
       category: searchParams.get('category'),
@@ -186,15 +218,19 @@ function ListingsContent() {
     }
     
     console.log('URL filtre parametreleri:', urlFilters);
+    console.log('Başlangıç sayfası:', initialPage);
     
-    setActiveFilters(urlFilters)
-    setPendingFilters(urlFilters)
+    setActiveFilters(urlFilters);
+    setPendingFilters(urlFilters);
+    
     // URL'den gelen sıralama parametresini kontrol et
     const sortParam = searchParams.get('sortBy') || 'newest';
     setSortBy(sortParam);
     setPendingSortBy(sortParam);
-    fetchListings(1, urlFilters)
-  }, [searchParams])
+    
+    setCurrentPage(initialPage);
+    fetchListings(initialPage, urlFilters);
+  }, [searchParams]);
 
   const handleFilter = (key: FilterKey, value: string | null) => {
     // Tüm filtreler için sadece pending state'i güncelle, direkt uygulama
@@ -212,6 +248,33 @@ function ListingsContent() {
     }
     setActiveFilters(newFilters)
     setSortBy(pendingSortBy)
+
+    // URL'i güncelle
+    const params = new URLSearchParams()
+    
+    // Filtreleri ekle
+    Object.entries(newFilters).forEach(([key, value]) => {
+      if (value) {
+        params.set(key, value)
+      }
+    })
+    
+    // Sıralama parametresini ekle
+    if (pendingSortBy !== 'newest') {
+      params.set('sortBy', pendingSortBy)
+    }
+    
+    // Sayfa 1'den farklıysa ekle
+    if (currentPage !== 1) {
+      params.set('page', '1')
+    }
+    
+    // URL'i güncelle
+    const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`
+    router.push(newUrl)
+
+    // İlk sayfadan başla
+    setCurrentPage(1)
     fetchListings(1, newFilters)
   }
 
@@ -233,6 +296,12 @@ function ListingsContent() {
     setPendingFilters(emptyFilters)
     setPendingSortBy('newest')
     setSortBy('newest')
+    
+    // URL'i temizle
+    router.push(window.location.pathname)
+    
+    // İlk sayfadan başla
+    setCurrentPage(1)
     fetchListings(1, emptyFilters)
   }
 
@@ -248,20 +317,6 @@ function ListingsContent() {
       ...prev,
       [listingId]: ((prev[listingId] || 0) - 1 + totalImages) % totalImages,
     }))
-  }
-
-  const handlePageChange = (newPage: number) => {
-    if (newPage < 1 || newPage > totalPages) return;
-    
-    console.log(`Sayfa değiştiriliyor: ${currentPage} -> ${newPage} (Toplam: ${totalPages})`);
-    setCurrentPage(newPage);
-    fetchListings(newPage);
-    
-    // Sayfa değiştiğinde sayfanın üstüne scroll yapalım
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
   }
 
   // Sayfalama bileşeni

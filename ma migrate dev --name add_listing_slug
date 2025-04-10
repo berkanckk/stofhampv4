@@ -1,0 +1,19 @@
+[33mcommit 7ce7d893fd7805a4f9f4ca2499ad04b5cfbe0ac1[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m
+Author: Berkan Çelik <berkanckk@gmail.com>
+Date:   Thu Apr 10 15:06:45 2025 +0300
+
+    fix: Sayfalama ve ilan listeleme sorunları düzeltildi
+
+ app/api/conversations/[id]/messages/route.ts |  10 [32m+[m
+ app/api/listings/route.ts                    |  33 [32m+[m[31m-[m
+ app/components/Footer.tsx                    |  66 [32m+++[m[31m-[m
+ app/favorites/page.tsx                       |   2 [32m+[m[31m-[m
+ app/listings/[id]/edit/EditListingForm.tsx   |   4 [32m+[m[31m-[m
+ app/listings/create/page.tsx                 |   4 [32m+[m[31m-[m
+ app/listings/page.tsx                        | 272 [32m++++++++++[m[31m---[m
+ app/messages/[id]/page.tsx                   | 529 [32m++++++++++++++++++++[m[31m-----[m
+ app/messages/page.tsx                        | 360 [32m++++++++++++[m[31m-----[m
+ app/my-listings/page.tsx                     |   2 [32m+[m[31m-[m
+ app/page.tsx                                 |  67 [32m++[m[31m--[m
+ package-lock.json                            | 572 [32m+++++++++++++++++++++++++[m[31m--[m
+ 12 files changed, 1581 insertions(+), 340 deletions(-)

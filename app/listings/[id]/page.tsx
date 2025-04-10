@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { useSession } from 'next-auth/react'
 import { format } from 'date-fns'
 import { tr } from 'date-fns/locale'
+import { use } from 'react'
 
 interface Seller {
   id: string
@@ -67,17 +68,22 @@ interface ListingData {
 }
 
 interface PageProps {
-  params: Promise<{ id: string }>
+  params: { id: string }
 }
 
-export default function ListingDetailPage({ params }: PageProps) {
+export default function ListingDetailPage() {
   const router = useRouter()
+  const params = useParams()
   const { data: session } = useSession()
   const [listing, setListing] = useState<ListingData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [isFavorite, setIsFavorite] = useState(false)
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   // Resim navigasyon fonksiyonları
   const nextImage = () => {
@@ -95,8 +101,7 @@ export default function ListingDetailPage({ params }: PageProps) {
   useEffect(() => {
     const fetchListing = async () => {
       try {
-        const resolvedParams = await params
-        const response = await fetch(`/api/listings/${resolvedParams.id}`)
+        const response = await fetch(`/api/listings/${params.id}`)
         const result = await response.json()
 
         if (!result.success) {
@@ -104,16 +109,17 @@ export default function ListingDetailPage({ params }: PageProps) {
         }
 
         setListing(result.data)
-      } catch (error) {
-        setError('İlan yüklenirken bir hata oluştu')
-        console.error('Fetch listing error:', error)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'İlan yüklenirken bir hata oluştu')
       } finally {
         setLoading(false)
       }
     }
 
-    fetchListing()
-  }, [params])
+    if (params.id) {
+      fetchListing()
+    }
+  }, [params.id])
 
   useEffect(() => {
     if (session?.user?.id && listing?.id) {

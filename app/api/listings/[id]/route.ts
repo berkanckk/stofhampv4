@@ -54,20 +54,35 @@ async function getListingDetails(id: string) {
 
 export async function GET(
   request: Request,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const params = await context.params
-    const id = params.id
-
-    // İlan detaylarını getir
-    const listing = await getListingDetails(id)
+    const listing = await prisma.listing.findUnique({
+      where: {
+        id: params.id
+      },
+      include: {
+        seller: {
+          select: {
+            id: true,
+            name: true,
+            company: true,
+            profileImage: true
+          }
+        },
+        category: true,
+        material: true,
+        _count: {
+          select: { favorites: true }
+        }
+      }
+    })
 
     if (!listing) {
-      return NextResponse.json(
-        { success: false, message: 'İlan bulunamadı' },
-        { status: 404 }
-      )
+      return NextResponse.json({
+        success: false,
+        message: 'İlan bulunamadı'
+      }, { status: 404 })
     }
 
     return NextResponse.json({
@@ -77,10 +92,13 @@ export async function GET(
 
   } catch (error) {
     console.error('Get listing error:', error)
-    return NextResponse.json(
-      { success: false, message: 'İlan alınırken bir hata oluştu' },
-      { status: 500 }
-    )
+    
+    return NextResponse.json({
+      success: false,
+      message: error instanceof Error ? error.message : 'İlan yüklenirken bir hata oluştu'
+    }, { status: 500 })
+  } finally {
+    await prisma.$disconnect()
   }
 }
 
