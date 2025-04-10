@@ -50,20 +50,16 @@ export default function Home() {
     const fetchFeaturedListings = async () => {
       try {
         setLoadingListings(true)
-        // Öne çıkan ilanlar için sorgu parametreleri
-        const params = new URLSearchParams()
-        params.append('page', '1')
-        params.append('sortBy', 'newest')
-        params.append('limit', '3') // Sadece 3 ilan göster
+        const response = await fetch('/api/listings?limit=6&featured=true')
+        const result = await response.json()
         
-        const response = await fetch(`/api/listings?${params.toString()}`)
-        const data = await response.json()
-        
-        if (data.success) {
-          setFeaturedListings(data.data.items)
+        if (result.success) {
+          setFeaturedListings(result.data.items)
+        } else {
+          console.error('Fetch featured listings error:', result.message)
         }
       } catch (error) {
-        console.error('Öne çıkan ilanlar yüklenirken hata:', error)
+        console.error('Fetch featured listings error:', error)
       } finally {
         setLoadingListings(false)
       }
@@ -92,11 +88,23 @@ export default function Home() {
     fetchData();
   }, []);
 
-  const handleSearch = (value: string) => {
-    if (value) {
-      router.push(`/listings?search=${encodeURIComponent(value)}`)
-    }
+  // Gerçek zamanlı arama için state ve işleyici
+  const [searchTerm, setSearchTerm] = useState("")
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Sadece state'i güncelle, otomatik arama yapma
+    setSearchTerm(e.target.value)
   }
+  
+  // Component unmount olduğunda zamanlayıcıyı temizle
+  useEffect(() => {
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // Başlık için animasyon varyantları
   const titleVariants = {
@@ -215,14 +223,14 @@ export default function Home() {
                   href="/listings?condition=USED" 
                   className="mx-6 text-xl font-medium relative group"
                 >
-                  <span className="group-hover:text-green-400 transition-colors duration-300">Kullanılmış</span>
+                  <span className="group-hover:text-green-400 transition-colors duration-300">İkinci El</span>
                   <span className="absolute -bottom-2 left-0 w-full h-0.5 bg-green-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
                 </Link>
                 <Link 
                   href="/listings?condition=NEW" 
                   className="mx-6 text-xl font-medium relative group"
                 >
-                  <span className="group-hover:text-green-400 transition-colors duration-300">Yeni</span>
+                  <span className="group-hover:text-green-400 transition-colors duration-300">Sıfır</span>
                   <span className="absolute -bottom-2 left-0 w-full h-0.5 bg-green-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></span>
                 </Link>
               </motion.div>
@@ -242,6 +250,7 @@ export default function Home() {
                   const category = formData.get('category') as string;
                   const material = formData.get('material') as string;
                   const price = formData.get('price') as string;
+                  const search = formData.get('search') as string;
                   
                   const searchParams = new URLSearchParams();
                   if (category && category !== "") searchParams.append('category', category);
@@ -251,6 +260,7 @@ export default function Home() {
                     if (min) searchParams.append('minPrice', min);
                     if (max && max !== "") searchParams.append('maxPrice', max);
                   }
+                  if (search && search.trim() !== "") searchParams.append('search', search.trim());
                   
                   // Debug için
                   console.log("Filtering with params:", searchParams.toString());
@@ -259,7 +269,25 @@ export default function Home() {
                 }}
                 className="flex flex-wrap md:flex-nowrap bg-white p-2 rounded-md shadow-lg hover:shadow-xl transition-all duration-300"
               >
-                <div className="w-full md:w-1/3 p-2">
+                <div className="w-full md:w-1/4 p-2">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      name="search"
+                      placeholder="İlan Ara..."
+                      className="w-full py-3 px-4 bg-white border-0 text-gray-700 appearance-none focus:outline-none focus:ring-2 focus:ring-green-500 rounded-md transition-all duration-300 hover:bg-green-50"
+                      value={searchTerm}
+                      onChange={handleSearchChange}
+                    />
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-700">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+                <div className="w-full md:w-1/4 p-2">
                   <div className="relative">
                     <select 
                       name="category"
@@ -279,7 +307,7 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-                <div className="w-full md:w-1/3 p-2">
+                <div className="w-full md:w-1/4 p-2">
                   <div className="relative">
                     <select 
                       name="material"
@@ -299,7 +327,7 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-                <div className="w-full md:w-1/3 p-2">
+                <div className="w-full md:w-1/4 p-2">
                   <div className="relative">
                     <select 
                       name="price"
@@ -320,14 +348,15 @@ export default function Home() {
                 <div className="w-full md:w-auto p-2">
                   <motion.button 
                     type="submit"
-                    className="w-full h-full bg-green-500 hover:bg-green-600 text-white py-2 px-6 rounded-md transition-colors"
+                    className="w-full h-full bg-green-500 hover:bg-green-600 text-white py-3 px-6 rounded-md transition-colors flex items-center justify-center"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 mr-2">
                       <circle cx="11" cy="11" r="8"></circle>
                       <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
+                    <span>Filtrele</span>
                   </motion.button>
                 </div>
               </form>
@@ -355,7 +384,7 @@ export default function Home() {
                   className="text-lg font-medium group-hover:text-green-400 transition-colors duration-300"
                   whileHover={{ scale: 1.05 }}
                 >
-                  Yeni
+                  Sıfır
                 </motion.p>
               </Link>
               
@@ -368,15 +397,15 @@ export default function Home() {
                   <svg className="w-10 h-10 group-hover:text-green-400 transition-colors duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
                     <line x1="7" y1="7" x2="7.01" y2="7"></line>
-                  </svg>
+              </svg>
                 </motion.div>
                 <motion.p 
                   className="text-lg font-medium group-hover:text-green-400 transition-colors duration-300"
                   whileHover={{ scale: 1.05 }}
                 >
-                  Kullanılmış
+                  İkinci El
                 </motion.p>
-              </Link>
+            </Link>
             </motion.div>
           </div>
         </div>
@@ -477,7 +506,7 @@ export default function Home() {
                   <Link href={`/listings/${listing.id}`} className="block h-full relative">
                     <div className="relative h-56 overflow-hidden">
                       <div className="absolute top-2 left-2 bg-green-100 text-green-800 text-xs font-semibold px-3 py-1.5 rounded-full z-10 shadow-sm">
-                        {listing.condition === 'NEW' ? 'Yeni' : 'Kullanılmış'}
+                        {listing.condition === 'NEW' ? 'Sıfır' : 'İkinci El'}
                       </div>
                       <div className="absolute top-2 right-2 bg-white rounded-full p-2 shadow-md z-10 hover:bg-red-50 transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 hover:text-red-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
