@@ -23,7 +23,7 @@ model User {
   listings         Listing[]
   receivedMessages Message[]      @relation("ReceivedMessages")
   sentMessages     Message[]      @relation("SentMessages")
-  conversations    Conversation[] @relation("UserConversations")
+  conversations    Conversation[]
 }
 
 model Listing {
@@ -42,9 +42,9 @@ model Listing {
   expiresAt     DateTime?
   conversations Conversation[]
   favorites     Favorite[]
-  category      Category       @relation(fields: [categoryId], references: [id])
-  material      MaterialType   @relation(fields: [materialId], references: [id])
-  seller        User           @relation(fields: [sellerId], references: [id])
+  category      Category       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  material      MaterialType   @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  seller        User           @relation(fields: [sellerId], references: [id], onDelete: Cascade)
 }
 
 model Category {
@@ -70,9 +70,9 @@ model Conversation {
   listingId String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-  listing   Listing?  @relation(fields: [listingId], references: [id])
+  listing   Listing?  @relation(fields: [listingId], references: [id], onDelete: Cascade)
   messages  Message[]
-  users     User[]    @relation("UserConversations")
+  users     User[]
 }
 
 model Message {
@@ -84,9 +84,9 @@ model Message {
   isRead         Boolean      @default(false)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
-  receiver       User         @relation("ReceivedMessages", fields: [receiverId], references: [id])
-  sender         User         @relation("SentMessages", fields: [senderId], references: [id])
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  receiver       User         @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  sender         User         @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
 }
 
 model Favorite {
@@ -94,8 +94,8 @@ model Favorite {
   userId    String
   listingId String
   createdAt DateTime @default(now())
-  listing   Listing  @relation(fields: [listingId], references: [id])
-  user      User     @relation(fields: [userId], references: [id])
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, listingId])
 }
