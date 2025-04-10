@@ -7,6 +7,7 @@ import { format } from 'date-fns'
 import { tr } from 'date-fns/locale'
 import ListingImage from '@/app/components/ListingImage'
 import { motion } from 'framer-motion'
+import SearchableDropdown from '@/app/components/SearchableDropdown'
 
 interface Category {
   id: string
@@ -72,6 +73,8 @@ function ListingsContent() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isFiltersVisible, setIsFiltersVisible] = useState(false)
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
   const [activeFilters, setActiveFilters] = useState<Filters>({
     category: searchParams.get('category'),
     material: searchParams.get('material'),
@@ -100,6 +103,37 @@ function ListingsContent() {
   const [totalItems, setTotalItems] = useState(0)
   const itemsPerPage = 9 // Backend ile aynı olmalı
 
+  // Filtreleme için arama terimleri
+  const [categorySearchTerm, setCategorySearchTerm] = useState('')
+  const [materialSearchTerm, setMaterialSearchTerm] = useState('')
+  
+  // Filtrelenmiş kategori ve malzeme listeleri
+  const filteredCategories = categorySearchTerm
+    ? categories.filter(category => 
+        category.name.toLowerCase().includes(categorySearchTerm.toLowerCase()))
+    : categories;
+    
+  // Önce kategoriye göre malzemeleri filtrele, sonra arama terimine göre filtrele
+  const filteredMaterialTypes = (() => {
+    // Filtreler uygulandıktan sonra activeFilters.category, uygulanmadan önce pendingFilters.category'yi göster
+    // Bu şekilde malzemeler her iki durumda da doğru filtrelenecek
+    const currentCategory = activeFilters.category || pendingFilters.category;
+    
+    console.log("🟢 MALZEME RENDER:", materialTypes.length ? "Malzemeler var" : "Malzemeler yok", 
+                "Kategori:", currentCategory || "Seçili değil");
+    
+    if (materialTypes.length > 0) {
+      console.log("🟢 Görüntülenen malzeme örnekleri:", 
+                  materialTypes.slice(0, 3).map(m => m.name).join(', '));
+    }
+    
+    // Arama terimine göre mevcut malzeme listesini filtrele
+    return materialSearchTerm
+      ? materialTypes.filter(material => 
+          material.name.toLowerCase().includes(materialSearchTerm.toLowerCase()))
+      : materialTypes;
+  })();
+
   const observer = useRef<IntersectionObserver | null>(null)
   const lastListingElementRef = useCallback((node: Element | null) => {
     if (loading) return
@@ -112,67 +146,175 @@ function ListingsContent() {
     if (node) observer.current.observe(node)
   }, [loading])
 
-  const fetchListings = async (page: number, filters = activeFilters, isLoadMore = false) => {
+  // Mobil cihaz kontrolü
+  const [onMobile, setOnMobile] = useState(false)
+
+  useEffect(() => {
+    // Ekran boyutuna göre mobil kontrolü
+    const checkMobile = () => {
+      setOnMobile(window.innerWidth < 768)
+    }
+    
+    // İlk yüklemede kontrol et
+    checkMobile()
+    
+    // Ekran boyutu değiştiğinde kontrol et
+    window.addEventListener('resize', checkMobile)
+    
+    // Cleanup
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  // Kategorileri getir
+  const fetchCategories = async () => {
     try {
-      if (!isLoadMore) {
-        setLoading(true);
+      console.log("Kategoriler getiriliyor");
+      
+      const response = await fetch('/api/categories');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-
-      // URL parametrelerini oluştur
-      const params = new URLSearchParams();
-      params.append('page', page.toString());
-      params.append('sortBy', pendingSortBy);
-
-      // Filtreleri ekle
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== null && value !== '') {
-          // Fiyat değerlerini sayısal formatta gönder
-          if (key === 'minPrice' || key === 'maxPrice') {
-            const numValue = parseFloat(value);
-            if (!isNaN(numValue)) {
-              params.append(key, numValue.toString());
-            }
-          } else {
-            params.append(key, value);
-          }
-        }
-      });
-
-      console.log('Fetching listings with params:', params.toString());
-
-      const response = await fetch(`/api/listings?${params.toString()}`, {
-        headers: {
-          'Cache-Control': 'no-cache'
-        }
-      });
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.message);
-      }
-
-      if (isLoadMore) {
-        setListings(prev => [...prev, ...data.data.items]);
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log("Kategoriler geldi:", result.data.length);
+        setCategories(result.data);
       } else {
-        setListings(data.data.items);
-        setCategories(data.data.categories);
-        setMaterialTypes(data.data.materialTypes);
+        console.error('Kategoriler yüklenirken API hatası:', result.message);
       }
-
-      // Sayfalama bilgilerini güncelle
-      setCurrentPage(data.data.pagination.currentPage);
-      setTotalPages(data.data.pagination.totalPages);
-      setTotalItems(data.data.pagination.totalItems);
-
-      setError(null);
     } catch (error) {
-      console.error('Fetch listings error:', error);
-      setError('İlanlar yüklenirken bir hata oluştu');
-    } finally {
-      setLoading(false);
+      console.error('Kategoriler yüklenirken hata:', error);
     }
   };
+
+  // Sayfa yüklendiğinde kategorileri getir
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const generateAlternativeTerms = (term: string) => {
+    const alternatives = [term];
+    const lowerTerm = term.toLowerCase().trim();
+    
+    // Çok kısa terimler için alternatif üretme
+    if (lowerTerm.length < 3) return alternatives;
+    
+    // Kelime yumuşamaları (k->ğ, p->b, t->d, ç->c vb.)
+    if (lowerTerm.endsWith('k')) {
+      // bıçak -> bıçağ 
+      alternatives.push(lowerTerm.slice(0, -1) + 'ğ');
+      
+      // bıçak -> bıçağı, bıçağa, bıçağın
+      alternatives.push(lowerTerm.slice(0, -1) + 'ğı');
+      alternatives.push(lowerTerm.slice(0, -1) + 'ğa');
+      alternatives.push(lowerTerm.slice(0, -1) + 'ğın');
+    }
+    
+    if (lowerTerm.endsWith('p')) {
+      alternatives.push(lowerTerm.slice(0, -1) + 'b');
+    }
+    
+    if (lowerTerm.endsWith('t')) {
+      alternatives.push(lowerTerm.slice(0, -1) + 'd');
+    }
+    
+    if (lowerTerm.endsWith('ç')) {
+      alternatives.push(lowerTerm.slice(0, -1) + 'c');
+    }
+    
+    // Yaygın Türkçe ekler
+    const suffixes = ['lar', 'ler', 'i', 'ı', 'u', 'ü', 'da', 'de', 'ta', 'te'];
+    
+    // Orijinal kelimeye ve yumuşamış haline tüm ekleri ekle
+    alternatives.forEach(base => {
+      suffixes.forEach(suffix => {
+        alternatives.push(base + suffix);
+      });
+    });
+    
+    // Tekrarları kaldır (linter hatasını düzeltmek için Array.from kullanımı)
+    return Array.from(new Set(alternatives));
+  };
+
+  const fetchListings = async (page: number, filters: Filters = activeFilters, isLoadMore: boolean = false) => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      console.log(`Sayfa ${page} için ilanlar getiriliyor...`)
+
+      // URL parametreleri oluştur
+      const params = new URLSearchParams()
+      params.set('page', page.toString())
+      
+      // Filtreleri ekle
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value) {
+          params.set(key, value.toString())
+        }
+      })
+      
+      // Arama terimine alternatifler ekle
+      if (filters.search) {
+        const alternatives = generateAlternativeTerms(filters.search);
+        if (alternatives.length > 1) {
+          params.set('altTerms', alternatives.slice(1).join(',')); // İlk terim zaten orijinal
+          console.log("Alternatif arama terimleri:", alternatives.slice(1));
+        }
+      }
+      
+      // Sıralama parametresini ekle
+      if (sortBy !== 'newest') {
+        params.set('sortBy', sortBy)
+      }
+      
+      console.log('İlanlar için API çağrısı:', `/api/listings?${params.toString()}`)
+      
+      const response = await fetch(`/api/listings?${params.toString()}`)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        if (isLoadMore) {
+          setListings(prev => [...prev, ...data.data.items])
+        } else {
+          setListings(data.data.items)
+          // Kategorileri güncelle
+          if (data.data.categories && data.data.categories.length > 0) {
+            console.log("Kategoriler API'den geldi:", data.data.categories.length);
+            setCategories(data.data.categories);
+          }
+          // Malzeme tiplerini güncelle
+          if (data.data.materialTypes && data.data.materialTypes.length > 0) {
+            console.log("Malzeme tipleri API'den geldi:", data.data.materialTypes.length);
+            setMaterialTypes(data.data.materialTypes);
+          }
+        }
+        
+        // API'den dönen pagination bilgilerini kullan
+        setCurrentPage(data.data.pagination.currentPage)
+        setTotalPages(data.data.pagination.totalPages)
+        setTotalItems(data.data.pagination.totalItems)
+        setHasMore(data.data.pagination.hasNextPage)
+        
+        setLoading(false)
+        return data // Promise döndürüyoruz, böylece .then() kullanabiliriz
+      } else {
+        throw new Error(data.message || 'İlanlar yüklenirken bir hata oluştu.')
+      }
+    } catch (err) {
+      console.error('İlanlar yüklenirken hata:', err)
+      setError('İlanlar yüklenirken bir hata oluştu. Lütfen daha sonra tekrar deneyin.')
+      setListings([])
+      setLoading(false)
+      throw err // Hata olduğunda da Promise reddediliyor, böylece catch kullanabiliriz
+    }
+  }
 
   const handlePageChange = (newPage: number) => {
     if (newPage < 1 || newPage > totalPages) return;
@@ -201,6 +343,62 @@ function ListingsContent() {
     });
   }
 
+  // Kategoriye göre malzemeleri filtreleme fonksiyonu
+  const loadMaterialsForCategory = async (categoryId: string | null) => {
+    try {
+      console.log("📦 Kategori değişimi için malzemeleri yükleniyor:", categoryId || "Tüm kategoriler");
+      
+      const endpoint = categoryId 
+        ? `/api/materials?categoryId=${categoryId}` 
+        : '/api/materials';
+      
+      console.log("📦 Malzeme API endpoint:", endpoint);
+      
+      const response = await fetch(endpoint);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log(`📦 Kategori için malzemeler yüklendi (${result.data.length} adet)`);
+        if (result.data.length > 0) {
+          console.log("📦 İlk birkaç malzeme:", result.data.slice(0, 3).map((m: any) => m.name).join(', '));
+        } else {
+          console.log("📦 Bu kategoride hiç malzeme yok!");
+        }
+        
+        // Malzeme tiplerini güncelle
+        setMaterialTypes(result.data);
+        
+        // Malzeme aramasını sıfırla
+        setMaterialSearchTerm('');
+        
+        // Eğer mevcut seçili malzeme bu kategoriye ait değilse sıfırla
+        if (pendingFilters.material) {
+          const materialExists = result.data.some((m: MaterialType) => m.id === pendingFilters.material);
+          if (!materialExists) {
+            console.log("📦 Seçili malzeme tipi bu kategoride yok, sıfırlanıyor");
+            setPendingFilters(prev => ({...prev, material: null}));
+          }
+        }
+        
+        // En son işlem olarak force render için bir dummy state güncelle
+        setLoading(false); // Loading state'ini kapatarak force render
+        
+        return result.data; // Promise olarak malzemeleri döndür
+      } else {
+        console.error('📦 Malzeme yüklenirken API hatası:', result.message);
+        throw new Error(result.message);
+      }
+    } catch (error) {
+      console.error('📦 Malzeme yükleme hatası:', error);
+      throw error; // Hatayı yeniden fırlat
+    }
+  };
+
+  // URL parametrelerine göre sayfa yüklendiğinde
   useEffect(() => {
     // URL'den sayfa numarasını al
     const pageParam = searchParams.get('page');
@@ -217,9 +415,10 @@ function ListingsContent() {
       search: searchParams.get('search')
     }
     
-    console.log('URL filtre parametreleri:', urlFilters);
-    console.log('Başlangıç sayfası:', initialPage);
+    console.log('🔍 URL filtre parametreleri:', urlFilters);
+    console.log('🔍 Başlangıç sayfası:', initialPage);
     
+    // Aktif ve bekleyen filtreleri güncelle
     setActiveFilters(urlFilters);
     setPendingFilters(urlFilters);
     
@@ -229,54 +428,158 @@ function ListingsContent() {
     setPendingSortBy(sortParam);
     
     setCurrentPage(initialPage);
-    fetchListings(initialPage, urlFilters);
+    
+    // ÖNEMLİ: Önce kategori seçili ise, ilgili malzeme tiplerini getir
+    // Bu işlem tamamlandıktan sonra ilanları getir
+    if (urlFilters.category) {
+      console.log('🔍 URL değişimi: Kategori seçili, malzemeleri yüklüyorum');
+      loadMaterialsForCategory(urlFilters.category)
+        .then(() => {
+          console.log('🔍 URL değişimi: Malzemeler yüklendi, ilanları getiriyorum');
+          fetchListings(initialPage, urlFilters);
+        })
+        .catch(error => {
+          console.error('🔍 URL değişimi: Malzeme yükleme hatası:', error);
+          fetchListings(initialPage, urlFilters);
+        });
+    } else {
+      console.log('🔍 URL değişimi: Kategori seçili değil, tüm malzemeleri yüklüyorum');
+      loadMaterialsForCategory(null)
+        .then(() => {
+          console.log('🔍 URL değişimi: Tüm malzemeler yüklendi, ilanları getiriyorum');
+          fetchListings(initialPage, urlFilters);
+        })
+        .catch(error => {
+          console.error('🔍 URL değişimi: Malzeme yükleme hatası:', error);
+          fetchListings(initialPage, urlFilters);
+        });
+    }
   }, [searchParams]);
 
+  // loadMaterialsForCategory fonksiyonunu force update ile güncelleyelim
+  const [forceUpdate, setForceUpdate] = useState(0);
+
+  // Kategori değiştiğinde malzemeleri güncelle - çok önemli!
+  useEffect(() => {
+    // Bekleyen kategori değiştiğinde malzemeleri güncelle
+    if (pendingFilters.category) {
+      console.log("🌟 Bekleyen kategori değişti, malzemeleri yüklüyorum:", pendingFilters.category);
+      loadMaterialsForCategory(pendingFilters.category)
+        .then(() => {
+          console.log("🌟 Bekleyen kategori için malzemeler yüklendi");
+        })
+        .catch(error => {
+          console.error("🌟 Bekleyen kategori için malzeme yükleme hatası:", error);
+        });
+    } else {
+      console.log("🌟 Bekleyen kategori temizlendi, tüm malzemeleri yüklüyorum");
+      loadMaterialsForCategory(null);
+    }
+  }, [pendingFilters.category, forceUpdate]);
+
   const handleFilter = (key: FilterKey, value: string | null) => {
-    // Tüm filtreler için sadece pending state'i güncelle, direkt uygulama
-    setPendingFilters(prev => ({
-      ...prev,
-      [key]: key === 'category' || key === 'material' || key === 'condition' 
-        ? (prev[key] === value ? null : value) // Eğer aynı değere tıklandıysa null yap
-        : value
-    }))
-  }
-
-  const applyAllFilters = () => {
-    const newFilters = {
-      ...pendingFilters
-    }
-    setActiveFilters(newFilters)
-    setSortBy(pendingSortBy)
-
-    // URL'i güncelle
-    const params = new URLSearchParams()
+    console.log('Filter değişti:', key, value);
     
-    // Filtreleri ekle
-    Object.entries(newFilters).forEach(([key, value]) => {
-      if (value) {
-        params.set(key, value)
+    // Tüm filtreler için pending state'i güncelle
+    if (key === 'category') {
+      // Kategori değişiminde özel işlem
+      if (value === pendingFilters.category) {
+        // Aynı kategoriye tıklandıysa, temizle
+        console.log("⭐ Kategori temizleniyor (aynı kategoriye tıklandı)");
+        setPendingFilters(prev => ({...prev, category: null, material: null}));
+        
+        // Hemen tüm malzemeleri yükle
+        loadMaterialsForCategory(null);
+      } else {
+        // Farklı kategoriye tıklandıysa, güncelle
+        console.log("⭐ Kategori değişiyor:", value);
+        setPendingFilters(prev => ({...prev, category: value, material: null}));
+        
+        // Hemen yeni kategoriye ait malzemeleri yükle
+        if (value) {
+          console.log("⭐ Yeni kategori seçildi, malzemeler yükleniyor:", value);
+          loadMaterialsForCategory(value)
+            .then(() => {
+              console.log("⭐ Kategori değişikliği sonrası malzemeler yüklendi");
+            })
+            .catch(error => {
+              console.error("⭐ Kategori değişikliğinde malzeme yükleme hatası:", error);
+            });
+        } else {
+          loadMaterialsForCategory(null);
+        }
       }
-    })
-    
-    // Sıralama parametresini ekle
-    if (pendingSortBy !== 'newest') {
-      params.set('sortBy', pendingSortBy)
+    } else {
+      // Diğer filtreler için normal işlem
+      setPendingFilters(prev => {
+        // Eğer aynı değere tıklandıysa, o değeri kaldır
+        if (prev[key] === value) {
+          return {...prev, [key]: null};
+        }
+        
+        // Değer değiştiyse, güncelle
+        return {...prev, [key]: value};
+      });
     }
-    
-    // Sayfa 1'den farklıysa ekle
-    if (currentPage !== 1) {
-      params.set('page', '1')
-    }
-    
-    // URL'i güncelle
-    const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`
-    router.push(newUrl)
-
-    // İlk sayfadan başla
-    setCurrentPage(1)
-    fetchListings(1, newFilters)
   }
+
+  // Filtreleri uygula ve URL güncelle
+  const applyAllFilters = () => {
+    try {
+      console.log("Filtreler uygulanıyor", pendingFilters);
+      
+      // Aktif filtreleri güncelle
+      setActiveFilters(pendingFilters);
+      
+      // Eski seçimleri temizle
+      if (pendingFilters.category !== activeFilters.category) {
+        console.log("Kategori değişti, malzeme seçimini sıfırlıyorum");
+        setPendingFilters(prev => ({...prev, material: null}));
+      }
+      
+      // Yeni filtreler oluştur
+      const newFilters = { ...pendingFilters };
+      if (pendingFilters.category !== activeFilters.category) {
+        newFilters.material = null;
+      }
+      
+      // URL'yi güncelle
+      updateUrl(newFilters);
+      
+      // Sayfa 1'e dön
+      setCurrentPage(1);
+      
+      // İlanları getir (alternatif terimlerle)
+      fetchListings(1, newFilters);
+      
+      // Kategori seçiliyse onunla ilgili malzeme tiplerini getir
+      if (pendingFilters.category) {
+        console.log("Kategori ID'ye göre malzemeleri getir:", pendingFilters.category);
+        loadMaterialsForCategory(pendingFilters.category)
+          .then(() => {
+            console.log("Kategori için malzemeler başarıyla yüklendi");
+          })
+          .catch((error) => {
+            console.error("Malzeme tipleri getirilirken hata:", error);
+          });
+      } else {
+        // Kategori seçili değilse tüm malzemeleri getir
+        console.log("Tüm malzemeleri getir");
+        loadMaterialsForCategory(null)
+          .then(() => {
+            console.log("Tüm malzemeler başarıyla yüklendi");
+          })
+          .catch((error) => {
+            console.error("Tüm malzemeler getirilirken hata:", error);
+          });
+      }
+      
+      console.log("Filtreler başarıyla uygulandı!");
+      
+    } catch (error) {
+      console.error("Filtreler uygulanırken bir hata oluştu:", error);
+    }
+  };
 
   const handleSort = (value: string) => {
     setPendingSortBy(value)
@@ -448,6 +751,37 @@ function ListingsContent() {
     );
   };
 
+  // URL'yi filtre parametreleriyle güncelle
+  const updateUrl = (filters: {
+    category?: string | null;
+    material?: string | null;
+    condition?: string | null;
+    minPrice?: string | null;
+    maxPrice?: string | null;
+    search?: string | null;
+    location?: string | null;
+  }) => {
+    const params = new URLSearchParams();
+    
+    // Parametreleri ekle
+    if (filters.category) params.append('category', filters.category);
+    if (filters.material) params.append('material', filters.material);
+    if (filters.condition) params.append('condition', filters.condition);
+    if (filters.minPrice) params.append('minPrice', filters.minPrice);
+    if (filters.maxPrice) params.append('maxPrice', filters.maxPrice);
+    if (filters.search) params.append('search', filters.search);
+    if (filters.location) params.append('location', filters.location);
+    
+    // Sıralama parametresi
+    if (sortBy !== 'newest') params.append('sortBy', sortBy);
+    
+    // URL'yi güncelle
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.pushState({}, '', newUrl);
+    
+    console.log("URL güncellendi:", newUrl);
+  };
+
   if (loading && listings.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
@@ -525,52 +859,65 @@ function ListingsContent() {
                   </div>
                 </div>
 
-                {/* Kategoriler */}
+                {/* Kategori */}
                 <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">Kategoriler</h3>
-                  <div className="relative">
-                    <select
-                      value={pendingFilters.category || ''}
-                      onChange={(e) => handleFilter('category', e.target.value)}
-                      className="w-full p-3 pl-3 bg-gray-50 border border-gray-200 rounded-xl text-sm appearance-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
-                    >
-                      <option value="">Tüm Kategoriler</option>
-                      {categories.map(category => (
-                        <option key={category.id} value={category.id}>
-                          {category.name}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="6 9 12 15 18 9"></polyline>
-                      </svg>
-                    </div>
-                  </div>
+                  <h3 className="text-sm font-medium text-gray-700 mb-2">Kategori</h3>
+                  <SearchableDropdown 
+                    options={filteredCategories}
+                    value={pendingFilters.category}
+                    onChange={(value) => handleFilter('category', value)}
+                    placeholder="Tüm Kategoriler"
+                    searchPlaceholder="Kategori ara..."
+                    onOpen={() => {
+                      console.log("📂 Kategori dropdown'u açıldı");
+                      // Force update yaparak kategori değişiminden bağımsız olarak malzeme yüklemesini tetikle
+                      setForceUpdate(prev => prev + 1);
+                    }}
+                  />
                 </div>
 
                 {/* Malzeme Tipleri */}
                 <div>
                   <h3 className="text-sm font-medium text-gray-700 mb-2">Malzeme Tipi</h3>
-                  <div className="relative">
-                    <select
-                      value={pendingFilters.material || ''}
-                      onChange={(e) => handleFilter('material', e.target.value)}
-                      className="w-full p-3 pl-3 bg-gray-50 border border-gray-200 rounded-xl text-sm appearance-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
-                    >
-                      <option value="">Tüm Malzemeler</option>
-                      {materialTypes.map(material => (
-                        <option key={material.id} value={material.id}>
-                          {material.name}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="6 9 12 15 18 9"></polyline>
-                      </svg>
-                    </div>
-                  </div>
+                  {/* ÖNEMLİ: Aktif filtrelendikten sonra malzemeyi güncellemeye çalıştığımızda doğru seçenekleri göstermiyor olabilir */}
+                  {/* Arayüz render edildiğinde aktif kategori için malzeme tiplerini göstermesini zorlayacağız */}
+                  <button
+                    onClick={() => {
+                      // Görüntülenen malzemeleri yeniden yükle
+                      console.log("🔄 Malzeme tiplerini yenileme tıklandı");
+                      const categoryId = activeFilters.category || pendingFilters.category;
+                      if (categoryId) {
+                        console.log("🔄 Kategori ID:", categoryId);
+                        loadMaterialsForCategory(categoryId);
+                      }
+                    }}
+                    className="absolute right-6 top-[100px] z-10 text-green-600 hover:text-green-700 transition-colors"
+                    title="Malzeme listesini güncelle"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                  </button>
+                  <SearchableDropdown 
+                    options={filteredMaterialTypes}
+                    value={pendingFilters.material}
+                    onChange={(value) => handleFilter('material', value)}
+                    placeholder="Tüm Malzemeler"
+                    searchPlaceholder="Malzeme ara..."
+                    onOpen={() => {
+                      console.log("📂 Malzeme dropdown'u açıldı");
+                      // Dropdown açıldığında kategoriye göre malzemeleri yenile
+                      // pendingFilters'da seçili kategori her zaman doğrudur, activeFilters değiştirilmiş olabilir
+                      const categoryId = pendingFilters.category;
+                      if (categoryId) {
+                        console.log("📂 Dropdown açıldığında malzemeler yenileniyor. Kategori:", categoryId);
+                        loadMaterialsForCategory(categoryId);
+                      } else {
+                        // Kategori seçili değilse tüm malzemeleri getir
+                        loadMaterialsForCategory(null);
+                      }
+                    }}
+                  />
                 </div>
 
                 {/* Durum */}

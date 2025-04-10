@@ -37,6 +37,7 @@ model Listing {
   images        String[]       @default([])
   location      String
   sellerId      String
+  slug          String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   expiresAt     DateTime?
@@ -48,18 +49,21 @@ model Listing {
 }
 
 model Category {
-  id          String    @id @default(uuid())
-  name        String    @unique
-  description String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  listings    Listing[]
+  id           String         @id @default(uuid())
+  name         String         @unique
+  description  String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  listings     Listing[]
+  materialTypes MaterialType[]
 }
 
 model MaterialType {
   id          String    @id @default(uuid())
   name        String    @unique
   description String?
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   listings    Listing[]

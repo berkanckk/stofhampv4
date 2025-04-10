@@ -115,7 +115,7 @@ export default function Navbar() {
             </Link>
             <Link
               href="/messages"
-              className={`text-base font-medium px-4 py-2 rounded-lg hover:bg-green-100 hover:text-green-800 transition-colors ${pathname.startsWith('/messages') ? 'text-green-600 bg-green-100' : isHomePage ? 'text-white' : 'text-gray-700'}`}
+              className={`text-sm font-medium px-4 py-2 rounded-lg hover:bg-green-100 hover:text-green-800 transition-colors ${pathname.startsWith('/messages') ? 'text-green-600 bg-green-100' : isHomePage ? 'text-white' : 'text-gray-700'}`}
             >
               <div className="relative flex items-center">
                 <span>Mesajlar</span>

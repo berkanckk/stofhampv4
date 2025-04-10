@@ -47,19 +47,23 @@ export default function CreateListingPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [categoriesResponse, materialsResponse] = await Promise.all([
-          fetch('/api/categories'),
-          fetch('/api/materials')
-        ])
-
+        const categoriesResponse = await fetch('/api/categories')
         const categoriesResult = await categoriesResponse.json()
-        const materialsResult = await materialsResponse.json()
 
-        if (!categoriesResult.success || !materialsResult.success) {
-          throw new Error('Veriler alınamadı')
+        if (!categoriesResult.success) {
+          throw new Error('Kategoriler alınamadı')
         }
 
         setCategories(categoriesResult.data)
+        
+        // Tüm malzemeleri başlangıçta göster
+        const materialsResponse = await fetch('/api/materials')
+        const materialsResult = await materialsResponse.json()
+
+        if (!materialsResult.success) {
+          throw new Error('Malzemeler alınamadı')
+        }
+
         setMaterialTypes(materialsResult.data)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Veriler yüklenirken bir hata oluştu')
@@ -68,6 +72,40 @@ export default function CreateListingPage() {
 
     fetchData()
   }, [])
+
+  // Kategori değiştiğinde ilgili malzeme tiplerini getir
+  useEffect(() => {
+    const fetchMaterialsByCategory = async () => {
+      if (!formData.categoryId) {
+        // Kategori seçilmemişse tüm malzemeleri getir
+        const materialsResponse = await fetch('/api/materials')
+        const materialsResult = await materialsResponse.json()
+
+        if (materialsResult.success) {
+          setMaterialTypes(materialsResult.data)
+        }
+        return
+      }
+
+      try {
+        const materialsResponse = await fetch(`/api/materials?categoryId=${formData.categoryId}`)
+        const materialsResult = await materialsResponse.json()
+
+        if (!materialsResult.success) {
+          throw new Error('Malzemeler alınamadı')
+        }
+
+        setMaterialTypes(materialsResult.data)
+        
+        // Seçilen kategori değiştiğinde malzeme seçimini sıfırla
+        setFormData(prev => ({ ...prev, materialId: '' }))
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Malzeme tipleri yüklenirken bir hata oluştu')
+      }
+    }
+
+    fetchMaterialsByCategory()
+  }, [formData.categoryId])
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.length) return

@@ -45,7 +45,8 @@ export async function GET(request: Request) {
       minPrice: searchParams.get('minPrice'),
       maxPrice: searchParams.get('maxPrice'),
       search: searchParams.get('search'),
-      location: searchParams.get('location')
+      location: searchParams.get('location'),
+      altTerms: searchParams.get('altTerms')
     }
 
     console.log('Search parameters:', { page, sortBy, ...filters })
@@ -142,21 +143,43 @@ export async function GET(request: Request) {
     }
 
     if (filters.search) {
-      const searchTerms = filters.search.trim().split(/\s+/); // Arama terimini boşluklardan ayır
+      const searchTerm = filters.search.trim();
       
-      // Her kelime için ayrı bir arama koşulu oluştur
-      const searchConditions = searchTerms.map(term => {
-        return {
-          OR: [
-            { title: { contains: term, mode: 'insensitive' as Prisma.QueryMode } },
-            { description: { contains: term, mode: 'insensitive' as Prisma.QueryMode } }
-          ]
-        } as Prisma.ListingWhereInput;
-      });
+      // Türkçe karakterler için normalize edilmiş arama terimleri oluştur
+      const normalizedSearchTerms = normalizeSearchTerms(searchTerm);
       
-      // Tüm koşulları birleştir (AND ile)
-      if (searchConditions.length > 0) {
-        where.AND = searchConditions;
+      // Kullanıcının gönderdiği alternatif terimleri de ekle
+      if (filters.altTerms) {
+        const altTerms = filters.altTerms.split(',').map(term => term.trim());
+        console.log('Alternatif arama terimleri:', altTerms);
+        normalizedSearchTerms.push(...altTerms);
+      }
+      
+      where.OR = [
+        ...normalizedSearchTerms.map(term => ({
+          title: { contains: term, mode: 'insensitive' as Prisma.QueryMode }
+        })),
+        ...normalizedSearchTerms.map(term => ({
+          description: { contains: term, mode: 'insensitive' as Prisma.QueryMode }
+        }))
+      ];
+      
+      // Arama terimi içinde boşluk varsa her bir kelimeyi ayrı ayrı da ara
+      if (searchTerm.includes(' ')) {
+        const words = searchTerm.split(/\s+/);
+        where.OR.push(
+          ...words.flatMap(word => {
+            const normalizedWords = normalizeSearchTerms(word);
+            return [
+              ...normalizedWords.map(term => ({
+                title: { contains: term, mode: 'insensitive' as Prisma.QueryMode }
+              })),
+              ...normalizedWords.map(term => ({
+                description: { contains: term, mode: 'insensitive' as Prisma.QueryMode }
+              }))
+            ];
+          })
+        );
       }
     }
 
@@ -258,32 +281,10 @@ export async function POST(request: Request) {
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + 30)
 
-    // Slug oluştur
-    let slug = generateSlug(body.title)
-    let slugExists = true
-    let slugCounter = 1
-
-    // Eğer slug zaten varsa sonuna sayı ekle
-    while (slugExists) {
-      const existingListing = await prisma.listing.findUnique({
-        where: { slug: slugCounter > 1 ? `${slug}-${slugCounter}` : slug }
-      })
-
-      if (!existingListing) {
-        slugExists = false
-        if (slugCounter > 1) {
-          slug = `${slug}-${slugCounter}`
-        }
-      } else {
-        slugCounter++
-      }
-    }
-
     // Yeni ilanı oluştur
     const listing = await prisma.listing.create({
       data: {
         ...body,
-        slug,
         sellerId: session.user.id,
         expiresAt
       }
@@ -317,4 +318,115 @@ export function invalidateListingsCache() {
       globalCache.invalidate(key)
     }
   })
+}
+
+// Türkçe karakterleri normalize eden ve arama alternatiflerini oluşturan yardımcı fonksiyon
+function normalizeSearchTerms(term: string): string[] {
+  const result = [term];
+  
+  // Türkçe karakter çiftleri
+  const characterPairs = {
+    'i': 'ı', 'ı': 'i',
+    'o': 'ö', 'ö': 'o',
+    'u': 'ü', 'ü': 'u',
+    's': 'ş', 'ş': 's',
+    'c': 'ç', 'ç': 'c',
+    'g': 'ğ', 'ğ': 'g'
+  };
+  
+  // Ana terimin harflerini tek tek kontrol et ve alternatifler oluştur
+  const normalizedTerm = term.toLowerCase();
+  result.push(normalizedTerm);
+  
+  for (const [char, replacement] of Object.entries(characterPairs)) {
+    if (normalizedTerm.includes(char)) {
+      const altTerm = normalizedTerm.replace(new RegExp(char, 'g'), replacement);
+      result.push(altTerm);
+    }
+  }
+  
+  // Türkçe yaygın son ekler
+  const commonSuffixes = [
+    'lar', 'ler', 'leri', 'ları', 'larını', 'lerini',
+    'da', 'de', 'ta', 'te', 'dan', 'den', 'tan', 'ten',
+    'in', 'ın', 'un', 'ün',
+    'a', 'e', 'i', 'ı', 'u', 'ü',
+    'ya', 'ye', 'yu', 'yü',
+    'im', 'ım', 'um', 'üm',
+    'imiz', 'ımız', 'umuz', 'ümüz',
+    'iniz', 'ınız', 'unuz', 'ünüz',
+    'ci', 'cı', 'cu', 'cü',
+    'li', 'lı', 'lu', 'lü',
+    'gi', 'gı', 'gu', 'gü',
+    'ki', 'kı', 'ku', 'kü'
+  ];
+
+  // Türkçe yaygın ön ekler
+  const commonPrefixes = ['bi', 'be'];
+  
+  // Terim bir son ek içeriyorsa, son ek olmadan da arama yap
+  for (const suffix of commonSuffixes) {
+    if (normalizedTerm.endsWith(suffix) && normalizedTerm.length > suffix.length + 2) {
+      const baseForm = normalizedTerm.slice(0, -suffix.length);
+      result.push(baseForm);
+      
+      // Base form + yaygın ekler kombinasyonları
+      for (const otherSuffix of commonSuffixes) {
+        if (otherSuffix !== suffix) {
+          result.push(baseForm + otherSuffix);
+        }
+      }
+    }
+  }
+  
+  // Ön eki kontrol et
+  for (const prefix of commonPrefixes) {
+    if (normalizedTerm.startsWith(prefix) && normalizedTerm.length > prefix.length + 2) {
+      result.push(normalizedTerm.slice(prefix.length));
+    }
+  }
+  
+  // Özgün kelime kökünü bulmaya çalış
+  let possibleRootForm = normalizedTerm;
+  let foundSuffix = false;
+  
+  // En uzun son ekleri önce kontrol et
+  const sortedSuffixes = [...commonSuffixes].sort((a, b) => b.length - a.length);
+  
+  for (const suffix of sortedSuffixes) {
+    if (possibleRootForm.endsWith(suffix) && possibleRootForm.length > suffix.length + 2) {
+      possibleRootForm = possibleRootForm.slice(0, -suffix.length);
+      foundSuffix = true;
+      // Bir soneki bulduktan sonra devam etmeye gerek yok
+      break;
+    }
+  }
+  
+  // Eğer kök bulunduysa ekle
+  if (foundSuffix) {
+    result.push(possibleRootForm);
+  }
+  
+  // Son karakteri yumuşama/sertleşme hali için kontrol et (b->p, c->ç, d->t, g->ğ/k)
+  const consonantPairs: Record<string, string> = {
+    'b': 'p', 'p': 'b',
+    'c': 'ç', 'ç': 'c',
+    'd': 't', 't': 'd',
+    'g': 'k', 'k': 'g'
+  };
+  
+  for (const baseForm of [...result]) {
+    if (baseForm.length >= 2) {
+      const lastChar = baseForm.charAt(baseForm.length - 1);
+      const replacement = consonantPairs[lastChar];
+      
+      if (replacement) {
+        const altForm = baseForm.slice(0, -1) + replacement;
+        result.push(altForm);
+      }
+    }
+  }
+  
+  // Tekrarlanan terimleri kaldır
+  return Array.from(new Set(result));
 } 
