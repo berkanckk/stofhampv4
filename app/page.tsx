@@ -325,19 +325,19 @@ export default function Home() {
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className="text-center mb-6 md:mb-12 flex flex-col items-center px-4"
+            className="text-center mb-4 md:mb-8 flex flex-col items-center px-4"
           >
             
             
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-2 md:mb-4">
+            <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold text-white mb-1 md:mb-4">
               <span className="font-light text-green-400">Stok</span><span className="font-bold">Fazlası</span>
             </h1>
             
-            <h2 className="text-4xl md:text-5xl lg:text-7xl font-extrabold text-white mb-4 md:mb-8">
+            <h2 className="text-3xl md:text-5xl lg:text-7xl font-extrabold text-white mb-2 md:mb-8">
               Ham Madde Pazarı
             </h2>
             
-            <p className="text-base md:text-xl text-gray-200 max-w-3xl mx-auto">
+            <p className="text-sm md:text-xl text-gray-200 max-w-3xl mx-auto">
               Sürdürülebilir kaynak yönetimi için stok fazlası malzemelerinizi değerlendirin veya ihtiyacınız olan malzemeleri uygun fiyata bulun.
             </p>
           </motion.div>
@@ -347,13 +347,13 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.8 }}
-            className="w-full max-w-4xl mx-auto mb-10 md:mb-20 px-4"
+            className="w-full max-w-4xl mx-auto mb-6 md:mb-20 px-4"
           >
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg p-3 relative z-30">
-              <form onSubmit={handleSearch} className="flex flex-col md:flex-row items-center gap-3">
+            <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg p-2 md:p-3 relative z-30">
+              <form onSubmit={handleSearch} className="flex flex-col md:flex-row items-center gap-2 md:gap-3">
                 <div className="relative flex-grow">
-                  <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                    <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="absolute inset-y-0 left-0 pl-3 md:pl-5 flex items-center pointer-events-none">
+                    <svg className="w-4 h-4 md:w-6 md:h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                     </svg>
                   </div>
@@ -362,11 +362,11 @@ export default function Home() {
                     placeholder="Ne arıyorsunuz?"
                     value={searchTerm}
                     onChange={handleSearchChange}
-                    className="w-full pl-14 pr-5 py-4 text-lg bg-white/90 text-gray-700 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full pl-10 md:pl-14 pr-3 md:pr-5 py-3 md:py-4 text-base md:text-lg bg-white/90 text-gray-700 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   />
                 </div>
                 
-                <div className="w-full md:w-auto flex flex-col md:flex-row gap-3">
+                <div className="w-full md:w-auto flex flex-col md:flex-row gap-2 md:gap-3">
                   <SearchableDropdown 
                     options={categories}
                     value={selectedCategoryId}
@@ -387,9 +387,9 @@ export default function Home() {
                   
                   <button
                     type="submit"
-                    className="w-full md:w-auto px-8 py-4 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white text-lg font-medium rounded-xl shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-center whitespace-nowrap"
+                    className="w-full md:w-auto px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white text-base md:text-lg font-medium rounded-xl shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-center whitespace-nowrap"
                   >
-                    <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 md:w-6 md:h-6 mr-1 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                     </svg>
                     Ara
