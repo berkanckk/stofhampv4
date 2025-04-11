@@ -32,7 +32,7 @@ const teamMembers = [
     name: 'Hamza Şahin',
     role: 'Kurucu Ortak & Ürün Yöneticisi',
     image: '/hamza.jpg',
-    bio: 'Kullanıcı ihtiyaçlarını analiz etme ve pazar stratejileri geliştirme konusundaki uzmanlığıyla, Stofhamp\'ın ürün vizyonunu şekillendirmektedir. İkinci el eşya pazarını daha erişilebilir ve güvenilir hale getirme misyonuyla çalışmaktadır.',
+    bio: 'Kullanıcı ihtiyaçlarını analiz etmek ve pazar stratejileri geliştirme konusundaki uzmanlığıyla bilinen, Stofhamp\'ın ürün vizyonunu şekillendirmektedir. İkinci el eşya pazarını daha erişilebilir ve güvenilir hale getirme misyonuyla çalışmaktadır.',
     social: {
       linkedin: '#',
       twitter: '#',
