@@ -302,7 +302,7 @@ export default function Home() {
   return (
     <div className="min-h-screen">
       {/* Hero Section - Görselli üst kısım */}
-      <section className="relative overflow-hidden">
+      <section className="relative overflow-hidden h-screen flex flex-col items-center justify-center">
         {/* Arkaplan Görseli ve Desenleri */}
         <div className="absolute inset-0 z-0">
           <Image
@@ -310,32 +310,34 @@ export default function Home() {
             alt="Hero Background"
             fill
             priority
-            className="object-cover"
+            sizes="100vw"
+            className="object-cover object-center"
+            style={{ objectPosition: 'center' }}
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/50 to-black/70"></div>
           <div className="absolute top-0 left-0 w-full h-full bg-[url('/grid-pattern.svg')] bg-repeat opacity-5"></div>
         </div>
 
         {/* Hero Content */}
-        <div className="container mx-auto px-4 relative z-10 pt-32 pb-20 flex flex-col items-center">
+        <div className="container mx-auto px-4 relative z-10 flex flex-col items-center justify-center h-full">
           {/* Logo ve Başlık */}
               <motion.div
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className="text-center mb-10 flex flex-col items-center"
+            className="text-center mb-6 md:mb-12 flex flex-col items-center px-4"
           >
             
             
-            <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-2 md:mb-4">
               <span className="font-light text-green-400">Stok</span><span className="font-bold">Fazlası</span>
             </h1>
             
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white mb-6">
+            <h2 className="text-4xl md:text-5xl lg:text-7xl font-extrabold text-white mb-4 md:mb-8">
               Ham Madde Pazarı
             </h2>
             
-            <p className="text-lg text-gray-200 max-w-2xl mx-auto">
+            <p className="text-base md:text-xl text-gray-200 max-w-3xl mx-auto">
               Sürdürülebilir kaynak yönetimi için stok fazlası malzemelerinizi değerlendirin veya ihtiyacınız olan malzemeleri uygun fiyata bulun.
             </p>
           </motion.div>
@@ -345,13 +347,13 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.8 }}
-            className="w-full max-w-3xl mx-auto mb-24"
+            className="w-full max-w-4xl mx-auto mb-10 md:mb-20 px-4"
           >
-            <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg p-2 relative z-30">
-              <form onSubmit={handleSearch} className="flex flex-col md:flex-row items-center gap-2">
+            <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg p-3 relative z-30">
+              <form onSubmit={handleSearch} className="flex flex-col md:flex-row items-center gap-3">
                 <div className="relative flex-grow">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                    <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                     </svg>
                   </div>
@@ -360,18 +362,18 @@ export default function Home() {
                     placeholder="Ne arıyorsunuz?"
                     value={searchTerm}
                     onChange={handleSearchChange}
-                    className="w-full pl-12 pr-4 py-3 bg-white/90 text-gray-700 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full pl-14 pr-5 py-4 text-lg bg-white/90 text-gray-700 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   />
                 </div>
                 
-                <div className="w-full md:w-auto flex flex-col md:flex-row gap-2">
+                <div className="w-full md:w-auto flex flex-col md:flex-row gap-3">
                   <SearchableDropdown 
                     options={categories}
                     value={selectedCategoryId}
                     onChange={handleCategoryChange}
                     placeholder="Kategori"
                     searchPlaceholder="Kategori ara..."
-                    className="w-full md:w-40"
+                    className="w-full md:w-44"
                   />
                   
                   <SearchableDropdown 
@@ -380,14 +382,14 @@ export default function Home() {
                     onChange={(value) => setSelectedMaterialId(value || '')}
                     placeholder="Malzeme"
                     searchPlaceholder="Malzeme ara..."
-                    className="w-full md:w-40"
+                    className="w-full md:w-44"
                   />
                   
                   <button
                     type="submit"
-                    className="w-full md:w-auto px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-medium rounded-xl shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-center whitespace-nowrap"
+                    className="w-full md:w-auto px-8 py-4 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white text-lg font-medium rounded-xl shadow-sm hover:shadow-md transition-all duration-200 flex items-center justify-center whitespace-nowrap"
                   >
-                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                     </svg>
                     Ara
@@ -402,30 +404,28 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5, duration: 0.6 }}
-            className="flex justify-center gap-20 mb-12 relative z-20"
+            className="flex justify-center gap-8 md:gap-24 relative z-20"
           >
             {/* Sıfır Ürünler */}
             <Link href="/listings?condition=NEW" className="flex flex-col items-center">
-              <div className="w-20 h-20 rounded-full border-2 border-white flex items-center justify-center bg-white/10 backdrop-blur-sm mb-2 transition-all duration-300 hover:bg-white/20 hover:scale-105 shadow-lg">
-                <svg className="w-10 h-10 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <div className="w-16 h-16 md:w-24 md:h-24 rounded-full border-2 border-white flex items-center justify-center bg-white/10 backdrop-blur-sm mb-2 md:mb-3 transition-all duration-300 hover:bg-white/20 hover:scale-105 shadow-lg">
+                <svg className="w-8 h-8 md:w-12 md:h-12 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M9 12L11 14L15 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                   <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2"/>
                 </svg>
               </div>
-              <span className="text-white text-center font-medium">Sıfır</span>
+              <span className="text-white text-center font-medium text-sm md:text-lg">Sıfır</span>
             </Link>
 
             {/* İkinci El */}
             <Link href="/listings?condition=USED" className="flex flex-col items-center">
-              <div className="w-20 h-20 rounded-full border-2 border-white flex items-center justify-center bg-white/10 backdrop-blur-sm mb-2 transition-all duration-300 hover:bg-white/20 hover:scale-105 shadow-lg">
-                <svg className="w-10 h-10 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M4 10C4 10 4.5 9 8 9C11.5 9 12.5 11 16 11C19.5 11 20 10 20 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                  <path d="M4 14C4 14 4.5 13 8 13C11.5 13 12.5 15 16 15C19.5 15 20 14 20 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                  <path d="M18 7L20 9.5L18 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M6 17L4 14.5L6 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <div className="w-16 h-16 md:w-24 md:h-24 rounded-full border-2 border-white flex items-center justify-center bg-white/10 backdrop-blur-sm mb-2 md:mb-3 transition-all duration-300 hover:bg-white/20 hover:scale-105 shadow-lg">
+                <svg className="w-8 h-8 md:w-12 md:h-12 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M4 10L8 6M4 10L8 14M4 10H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M20 14L16 18M20 14L16 10M20 14H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </div>
-              <span className="text-white text-center font-medium">İkinci El</span>
+              <span className="text-white text-center font-medium text-sm md:text-lg">İkinci El</span>
             </Link>
           </motion.div>
         </div>

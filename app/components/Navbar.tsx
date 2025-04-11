@@ -225,28 +225,28 @@ export default function Navbar() {
           </div>
 
           {/* Desktop Menu */}
-          <div className="hidden md:flex md:items-center md:space-x-8">
+          <div className="hidden md:flex md:items-center md:space-x-10">
             <Link 
               href="/listings"
-              className={`${isHomePage ? 'text-white' : 'text-gray-600'} hover:text-green-600 px-3 py-2 text-sm font-medium transition-colors`}
+              className={`${isHomePage ? 'text-white' : 'text-gray-600'} hover:text-green-600 px-4 py-2.5 text-base font-medium transition-colors`}
             >
               İlanlar
             </Link>
             <Link 
               href="/about"
-              className={`${isHomePage ? 'text-white' : 'text-gray-600'} hover:text-green-600 px-3 py-2 text-sm font-medium transition-colors`}
+              className={`${isHomePage ? 'text-white' : 'text-gray-600'} hover:text-green-600 px-4 py-2.5 text-base font-medium transition-colors`}
             >
               Hakkımızda
             </Link>
             <Link 
               href="/contact"
-              className={`${isHomePage ? 'text-white' : 'text-gray-600'} hover:text-green-600 px-3 py-2 text-sm font-medium transition-colors`}
+              className={`${isHomePage ? 'text-white' : 'text-gray-600'} hover:text-green-600 px-4 py-2.5 text-base font-medium transition-colors`}
             >
               İletişim
             </Link>
             <Link
               href="/messages"
-              className={`text-sm font-medium px-4 py-2 rounded-lg hover:bg-green-100 hover:text-green-800 transition-colors ${pathname.startsWith('/messages') ? 'text-green-600 bg-green-100' : isHomePage ? 'text-white' : 'text-gray-700'}`}
+              className={`text-base font-medium px-5 py-2.5 rounded-lg hover:bg-green-100 hover:text-green-800 transition-colors ${pathname.startsWith('/messages') ? 'text-green-600 bg-green-100' : isHomePage ? 'text-white' : 'text-gray-700'}`}
             >
               <div className="relative flex items-center">
                 <span>Mesajlar</span>
@@ -261,10 +261,10 @@ export default function Navbar() {
             </Link>
 
             {session ? (
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-5">
                 <Link
                   href="/listings/create"
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+                  className="bg-green-600 text-white px-5 py-2.5 rounded-lg text-base font-medium hover:bg-green-700 transition-colors"
                 >
                   İlan Ver
                 </Link>
@@ -272,70 +272,70 @@ export default function Navbar() {
                   <button
                     className={`flex items-center ${isHomePage ? 'text-white' : 'text-gray-600'} hover:text-green-600 transition-colors`}
                   >
-                    <div className="h-8 w-8 rounded-full overflow-hidden border-2 border-green-500 bg-green-100 flex items-center justify-center mr-2">
+                    <div className="h-9 w-9 rounded-full overflow-hidden border-2 border-green-500 bg-green-100 flex items-center justify-center mr-2">
                       {userProfile?.profileImage ? (
                         <Image 
                           src={userProfile.profileImage} 
                           alt={userProfile.name || "Kullanıcı"} 
-                          width={32} 
-                          height={32}
+                          width={36} 
+                          height={36}
                           className="object-cover"
                         />
                       ) : (
-                        <span className="text-green-600 font-semibold text-sm">
+                        <span className="text-green-600 font-semibold text-base">
                           {userProfile?.name ? userProfile.name[0].toUpperCase() : "S"}
                         </span>
                       )}
                     </div>
-                    <span className="text-sm font-medium mr-2">Hesabım</span>
-                    <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                    <span className="text-base font-medium mr-2">Hesabım</span>
+                    <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
                     </svg>
                   </button>
-                  <div className="absolute right-0 w-48 mt-2 py-2 bg-white rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                    <div className="px-4 py-2 border-b border-gray-200">
+                  <div className="absolute right-0 w-52 mt-2 py-2 bg-white rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                    <div className="px-4 py-3 border-b border-gray-200">
                       <div className="flex items-center space-x-2">
-                        <div className="h-6 w-6 rounded-full overflow-hidden bg-green-100 flex items-center justify-center">
+                        <div className="h-7 w-7 rounded-full overflow-hidden bg-green-100 flex items-center justify-center">
                           {userProfile?.profileImage ? (
                             <Image 
                               src={userProfile.profileImage} 
                               alt={userProfile.name || "Kullanıcı"} 
-                              width={24} 
-                              height={24}
+                              width={28} 
+                              height={28}
                               className="object-cover"
                             />
                           ) : (
-                            <span className="text-green-600 font-semibold text-xs">
+                            <span className="text-green-600 font-semibold text-sm">
                               {userProfile?.name ? userProfile.name[0].toUpperCase() : "S"}
                             </span>
                           )}
                         </div>
-                        <div className="text-xs text-gray-500 truncate max-w-[140px]">
+                        <div className="text-sm text-gray-500 truncate max-w-[140px]">
                           {userProfile?.name || session.user?.name || 'Kullanıcı'}
                         </div>
                       </div>
                     </div>
                     <Link
                       href="/profile"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100"
                     >
                       Profilim
                     </Link>
                     <Link
                       href="/my-listings"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100"
                     >
                       İlanlarım
                     </Link>
                     <Link
                       href="/favorites"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100"
                     >
                       Favorilerim
                     </Link>
                     <Link
                       href="/messages"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-100"
                     >
                       <div className="relative flex items-center">
                         <span>Mesajlarım</span>
@@ -348,7 +348,7 @@ export default function Navbar() {
                     </Link>
                     <button
                       onClick={() => signOut()}
-                      className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                      className="block w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-gray-100"
                     >
                       Çıkış Yap
                     </button>
@@ -356,16 +356,16 @@ export default function Navbar() {
                 </div>
               </div>
             ) : (
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-5">
                 <Link
                   href="/login"
-                  className={`${isHomePage ? 'text-white' : 'text-gray-600'} hover:text-green-600 px-3 py-2 text-sm font-medium transition-colors`}
+                  className={`${isHomePage ? 'text-white' : 'text-gray-600'} hover:text-green-600 px-4 py-2.5 text-base font-medium transition-colors`}
                 >
                   Giriş Yap
                 </Link>
                 <Link
                   href="/register"
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+                  className="bg-green-600 text-white px-5 py-2.5 rounded-lg text-base font-medium hover:bg-green-700 transition-colors"
                 >
                   Kayıt Ol
                 </Link>
