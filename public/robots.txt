@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://stofhamp.com
+
+# Sitemaps
+Sitemap: https://stofhamp.com/sitemap.xml
