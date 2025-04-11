@@ -72,6 +72,11 @@ export default function Home() {
       try {
         setLoadingListings(true)
         const response = await fetch('/api/listings?limit=8&sort=newest')
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const result = await response.json()
         
         if (result.success) {
@@ -79,9 +84,11 @@ export default function Home() {
           setLatestListings(result.data.items.slice(0, 8))
         } else {
           console.error('Fetch latest listings error:', result.message)
+          setLatestListings([]) // Boş array ile devam et, UI hatasız gösterilsin
         }
       } catch (error) {
         console.error('Fetch latest listings error:', error)
+        setLatestListings([]) // Hata durumunda boş array kullan
       } finally {
         setLoadingListings(false)
       }
@@ -96,14 +103,26 @@ export default function Home() {
       try {
         // Veritabanından kategorileri ve malzeme tiplerini al
         const response = await fetch('/api/listings?page=1&limit=1');
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const result = await response.json();
         
         if (result.success) {
           setCategories(result.data.categories || []);
           setMaterialTypes(result.data.materialTypes || []);
+        } else {
+          console.error('API error:', result.message);
+          setCategories([]);
+          setMaterialTypes([]);
         }
       } catch (error) {
         console.error('Kategori ve malzeme tipleri yüklenirken hata:', error);
+        // Hatalar olsa bile boş dizilerle devam et, UI'da hatalar gösterilmesin
+        setCategories([]);
+        setMaterialTypes([]);
       }
     };
     
@@ -119,6 +138,11 @@ export default function Home() {
           : '/api/materials';
           
         const response = await fetch(endpoint);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const result = await response.json();
         
         if (result.success) {
@@ -130,14 +154,19 @@ export default function Home() {
               setSelectedMaterialId('');
             }
           }
+        } else {
+          console.error('API error:', result.message);
+          setMaterialTypes([]);
         }
       } catch (error) {
         console.error('Malzeme tipleri yüklenirken hata:', error);
+        // Hata durumunda boş dizi kullan
+        setMaterialTypes([]);
       }
     };
     
     fetchMaterialTypes();
-  }, [selectedCategoryId]);
+  }, [selectedCategoryId, selectedMaterialId]);
 
   // Kategoriye göre malzeme filtresi değişikliği
   const handleCategoryChange = (categoryId: string | null) => {

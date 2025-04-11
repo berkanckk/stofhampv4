@@ -31,7 +31,17 @@ function generateListingsCacheKey(params: URLSearchParams): string {
 
 export async function GET(request: Request) {
   try {
-    await prisma.$connect()
+    // Veritabanı bağlantısını kontrol et
+    try {
+      await prisma.$connect()
+    } catch (error) {
+      console.error('Veritabanı bağlantı hatası:', error)
+      return NextResponse.json({
+        success: false,
+        message: 'Veritabanına bağlanılamıyor, lütfen daha sonra tekrar deneyin.',
+        error: (error as Error).message
+      }, { status: 503 }) // 503 Service Unavailable
+    }
 
     const { searchParams } = new URL(request.url)
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'))
@@ -57,27 +67,34 @@ export async function GET(request: Request) {
 
     // Cache'de yoksa veritabanından al ve cache'e kaydet
     if (!categories || !materialTypes) {
-      [categories, materialTypes] = await Promise.all([
-        prisma.category.findMany({
-          orderBy: { name: 'asc' },
-          include: {
-            _count: {
-              select: { listings: true }
+      try {
+        [categories, materialTypes] = await Promise.all([
+          prisma.category.findMany({
+            orderBy: { name: 'asc' },
+            include: {
+              _count: {
+                select: { listings: true }
+              }
             }
-          }
-        }),
-        prisma.materialType.findMany({
-          orderBy: { name: 'asc' },
-          include: {
-            _count: {
-              select: { listings: true }
+          }),
+          prisma.materialType.findMany({
+            orderBy: { name: 'asc' },
+            include: {
+              _count: {
+                select: { listings: true }
+              }
             }
-          }
-        })
-      ])
+          })
+        ])
 
-      globalCache.set(CACHE_KEYS.CATEGORIES, categories)
-      globalCache.set(CACHE_KEYS.MATERIALS, materialTypes)
+        globalCache.set(CACHE_KEYS.CATEGORIES, categories)
+        globalCache.set(CACHE_KEYS.MATERIALS, materialTypes)
+      } catch (error) {
+        console.error('Kategori ve materyal verisi alınırken hata:', error)
+        // Hata durumunda boş diziler kullan
+        categories = []
+        materialTypes = []
+      }
     }
 
     // Composite cache key oluştur
@@ -189,77 +206,97 @@ export async function GET(request: Request) {
 
     console.log('Query conditions:', { where, orderBy })
 
-    // İlanları ve toplam sayıyı paralel olarak al
-    const [items, totalItems] = await Promise.all([
-      prisma.listing.findMany({
-        where,
-        take: ITEMS_PER_PAGE,
-        skip: (page - 1) * ITEMS_PER_PAGE,
-        orderBy,
-        include: {
-          seller: {
-            select: {
-              id: true,
-              name: true,
-              company: true,
-              profileImage: true
+    try {
+      // İlanları ve toplam sayıyı paralel olarak al
+      const [items, totalItems] = await Promise.all([
+        prisma.listing.findMany({
+          where,
+          take: ITEMS_PER_PAGE,
+          skip: (page - 1) * ITEMS_PER_PAGE,
+          orderBy,
+          include: {
+            seller: {
+              select: {
+                id: true,
+                name: true,
+                company: true,
+                profileImage: true
+              }
+            },
+            category: true,
+            material: true,
+            _count: {
+              select: { favorites: true }
             }
-          },
-          category: true,
-          material: true,
-          _count: {
-            select: { favorites: true }
           }
+        }),
+        prisma.listing.count({ where })
+      ])
+
+      console.log(`Found ${items.length} items out of ${totalItems} total`)
+
+      // Pagination bilgilerini hesapla
+      const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE)
+      const hasNextPage = items.length === ITEMS_PER_PAGE
+      const nextCursor = hasNextPage ? items[items.length - 1].id : null
+
+      const responseData = {
+        items,
+        pagination: {
+          totalItems,
+          itemsPerPage: ITEMS_PER_PAGE,
+          currentPage: page,
+          totalPages,
+          hasNextPage,
+          hasPreviousPage: page > 1,
+          nextCursor
         }
-      }),
-      prisma.listing.count({ where })
-    ])
-
-    console.log(`Found ${items.length} items out of ${totalItems} total`)
-
-    // Pagination bilgilerini hesapla
-    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE)
-    const hasNextPage = items.length === ITEMS_PER_PAGE
-    const nextCursor = hasNextPage ? items[items.length - 1].id : null
-
-    const responseData = {
-      items,
-      pagination: {
-        totalItems,
-        itemsPerPage: ITEMS_PER_PAGE,
-        currentPage: page,
-        totalPages,
-        hasNextPage,
-        hasPreviousPage: page > 1,
-        nextCursor
       }
+
+      console.log(`Sayfalama bilgileri: Sayfa ${page}/${totalPages}, Toplam öğe: ${totalItems}, Sayfa başına: ${ITEMS_PER_PAGE}`)
+
+      // Composite cache'e kaydet
+      globalCache.setComposite(CACHE_KEYS.LISTINGS, compositeKey, responseData)
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          ...responseData,
+          categories,
+          materialTypes
+        }
+      })
+    } catch (error) {
+      console.error('İlanlar getirilirken veritabanı hatası:', error)
+      return NextResponse.json({
+        success: false,
+        message: 'İlanlar getirilirken bir hata oluştu.',
+        error: (error as Error).message,
+        data: { 
+          items: [], 
+          pagination: {
+            totalItems: 0,
+            itemsPerPage: ITEMS_PER_PAGE,
+            currentPage: page,
+            totalPages: 0,
+            hasNextPage: false,
+            hasPreviousPage: false,
+            nextCursor: null
+          },
+          categories,
+          materialTypes 
+        }
+      }, { status: 500 })
     }
-
-    console.log(`Sayfalama bilgileri: Sayfa ${page}/${totalPages}, Toplam öğe: ${totalItems}, Sayfa başına: ${ITEMS_PER_PAGE}`)
-
-    // Composite cache'e kaydet
-    globalCache.setComposite(CACHE_KEYS.LISTINGS, compositeKey, responseData)
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        ...responseData,
-        categories,
-        materialTypes
-      }
-    })
-
   } catch (error) {
-    console.error('API Error:', error)
-    
+    console.error('Listings API genel hata:', error)
     return NextResponse.json({
       success: false,
-      message: error instanceof Error ? error.message : 'Bir hata oluştu',
-      error: process.env.NODE_ENV === 'development' ? error : undefined
-    }, {
-      status: error instanceof Prisma.PrismaClientKnownRequestError ? 400 : 500
-    })
+      message: 'İstek işlenirken bir hata oluştu.',
+      error: (error as Error).message
+    }, { status: 500 })
   } finally {
+    // Bağlantıyı kapatalım
     await prisma.$disconnect()
   }
 }

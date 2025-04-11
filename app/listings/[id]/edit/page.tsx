@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import type { Viewport } from 'next'
 import EditListingForm from './EditListingForm'
-import { PrismaClient } from '@prisma/client'
+import prisma from '@/app/lib/prismadb'
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -10,35 +10,35 @@ export const viewport: Viewport = {
   userScalable: false
 }
 
-const prisma = new PrismaClient()
+// Sayfayı dinamik olarak işaretliyoruz
+export const dynamic = 'force-dynamic'
+// Önbelleğe almayı devre dışı bırakıyoruz
+export const revalidate = 0
 
 async function getInitialData() {
-  const [categories, materialTypes] = await Promise.all([
-    prisma.category.findMany(),
-    prisma.materialType.findMany(),
-  ])
-  return { categories, materialTypes }
+  try {
+    const [categories, materialTypes] = await Promise.all([
+      prisma.category.findMany(),
+      prisma.materialType.findMany(),
+    ])
+    return { categories, materialTypes }
+  } catch (error) {
+    console.error('Veri alınırken hata oluştu:', error)
+    return { categories: [], materialTypes: [] }
+  }
 }
 
 interface PageProps {
-  params: Promise<{
+  params: {
     id: string
-  }>
+  }
 }
 
-// ✅ `generateStaticParams` ile `params`'ı hazır hale getiriyoruz
-export async function generateStaticParams() {
-  const listings = await prisma.listing.findMany({
-    select: { id: true }
-  })
-  return listings.map((listing) => ({ id: listing.id.toString() }))
-}
+// generateStaticParams fonksiyonunu kaldırıyoruz çünkü artık dinamik sayfa
 
 // ✅ Burada artık `params.id` hatası almayacağız
 export default async function EditListingPage({ params }: PageProps) {
-  // Önce params'ı bekleyelim
-  const resolvedParams = await params
-  const listingId = resolvedParams.id
+  const listingId = params.id
 
   // Sonra diğer verileri alalım
   const initialData = await getInitialData()
