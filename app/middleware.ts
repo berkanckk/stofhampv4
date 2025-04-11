@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
+import { withAuth } from 'next-auth/middleware'
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
 
@@ -18,63 +18,87 @@ try {
   console.error('Redis connection error:', error);
 }
 
-export async function middleware(request: NextRequest) {
-  const path = request.nextUrl.pathname
-
-  // API routes that need rate limiting
-  if (path.startsWith('/api/')) {
-    try {
-      if (!ratelimit) {
-        console.warn('Rate limiter not initialized, skipping rate limit check');
-        return NextResponse.next();
-      }
-
-      // IP adresini headers'dan al
-      const forwardedFor = request.headers.get('x-forwarded-for');
-      const ip = forwardedFor ? forwardedFor.split(',')[0] : '127.0.0.1';
+export default withAuth(
+  async function middleware(req) {
+    const token = await getToken({ req })
+    const isAuth = !!token
+    const isAuthPage = 
+      req.nextUrl.pathname.startsWith('/login') || 
+      req.nextUrl.pathname.startsWith('/register')
       
-      const { success, limit, reset, remaining } = await ratelimit.limit(
-        `ratelimit_${ip}`
-      )
-
-      if (!success) {
-        return new NextResponse('Too Many Requests', {
-          status: 429,
-          headers: {
-            'X-RateLimit-Limit': limit.toString(),
-            'X-RateLimit-Remaining': remaining.toString(),
-            'X-RateLimit-Reset': reset.toString(),
-          },
-        })
+    const isAdminPage = req.nextUrl.pathname.startsWith('/admin')
+    
+    // Admin olmayan kullanıcıları admin sayfalarından yönlendir
+    if (isAdminPage) {
+      if (!isAuth) {
+        return NextResponse.redirect(new URL('/login', req.url))
       }
-    } catch (error) {
-      console.error('Rate limit error:', error)
-      // Rate limiting hatası durumunda isteği engelleme
-      return NextResponse.next();
+      
+      if (token?.userType !== 'ADMIN') {
+        return NextResponse.redirect(new URL('/', req.url))
+      }
     }
-  }
 
-  // Protected API routes
-  if (
-    path.startsWith('/api/listings/create') ||
-    path.startsWith('/api/messages') ||
-    path.startsWith('/api/favorites')
-  ) {
-    const token = await getToken({ req: request })
-    if (!token) {
-      return new NextResponse('Unauthorized', { status: 401 })
+    if (isAuthPage) {
+      if (isAuth) {
+        return NextResponse.redirect(new URL('/', req.url))
+      }
+      return null
     }
-  }
 
-  return NextResponse.next()
-}
+    const path = req.nextUrl.pathname
+
+    // API routes that need rate limiting
+    if (
+      path.startsWith('/api/contact') ||
+      path.startsWith('/api/auth/register')
+    ) {
+      try {
+        // IP adresini headers'dan al
+        const forwardedFor = req.headers.get('x-forwarded-for');
+        const ip = forwardedFor ? forwardedFor.split(',')[0] : '127.0.0.1';
+        
+        if (ratelimit) {
+          const { success } = await ratelimit.limit(ip)
+          
+          if (!success) {
+            return new NextResponse("Too Many Requests", { status: 429 })
+          }
+        }
+      } catch (error) {
+        console.log('Rate limiting error:', error)
+      }
+    }
+
+    // API rotaları doğrulama gerektiriyor
+    if (
+      path.startsWith('/api/profile') ||
+      path.startsWith('/api/listings/user') ||
+      path.startsWith('/api/listings/create') ||
+      path.startsWith('/api/messages') ||
+      path.startsWith('/api/favorites')
+    ) {
+      if (!token) {
+        return new NextResponse('Unauthorized', { status: 401 })
+      }
+    }
+
+    return NextResponse.next()
+  }
+)
 
 // Middleware'in hangi path'lerde çalışacağını belirt
 export const config = {
   matcher: [
-    '/api/:path*',
+    '/api/contact/:path*',
+    '/api/auth/register/:path*',
+    '/api/profile/:path*',
+    '/api/listings/user/:path*',
     '/api/listings/create/:path*',
     '/api/messages/:path*',
-    '/api/favorites/:path*'
+    '/api/favorites/:path*',
+    '/login',
+    '/register',
+    '/admin/:path*'
   ],
 } 

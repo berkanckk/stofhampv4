@@ -39,7 +39,8 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: user.name,
           image: user.profileImage,
-          company: user.company
+          company: user.company,
+          userType: user.userType
         }
       }
     })
@@ -57,6 +58,7 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id
         token.image = user.image
         token.company = user.company
+        token.userType = user.userType
       }
       return token
     },
@@ -65,6 +67,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id as string
         session.user.image = token.image as string
         session.user.company = token.company as string
+        session.user.userType = token.userType as string
       }
       return session
     }

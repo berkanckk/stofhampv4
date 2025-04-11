@@ -107,6 +107,7 @@ model Favorite {
 enum UserType {
   PERSONAL
   BUSINESS
+  ADMIN
 }
 
 enum Condition {
