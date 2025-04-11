@@ -264,12 +264,14 @@ function ListingsContent() {
         }
       }
       
-      // Sıralama parametresini ekle
+      // Sıralama parametresini ekle - pendingSortBy yerine sortBy kullan
+      // çünkü applyAllFilters fonksiyonunda bu değerler zaten senkronize edildi
       if (sortBy !== 'newest') {
         params.set('sortBy', sortBy)
       }
       
       console.log('İlanlar için API çağrısı:', `/api/listings?${params.toString()}`)
+      console.log('Sıralama değeri:', sortBy)
       
       const response = await fetch(`/api/listings?${params.toString()}`)
       
@@ -531,6 +533,9 @@ function ListingsContent() {
       // Aktif filtreleri güncelle
       setActiveFilters(pendingFilters);
       
+      // Sıralama değerini güncelle
+      setSortBy(pendingSortBy);
+      
       // Eski seçimleri temizle
       if (pendingFilters.category !== activeFilters.category) {
         console.log("Kategori değişti, malzeme seçimini sıfırlıyorum");
@@ -543,13 +548,13 @@ function ListingsContent() {
         newFilters.material = null;
       }
       
-      // URL'yi güncelle
+      // URL'yi güncelle - sortBy parametresini doğrudan gönderiyoruz
       updateUrl(newFilters);
       
       // Sayfa 1'e dön
       setCurrentPage(1);
       
-      // İlanları getir (alternatif terimlerle)
+      // İlanları getir (alternatif terimlerle ve doğru sıralama ile)
       fetchListings(1, newFilters);
       
       // Kategori seçiliyse onunla ilgili malzeme tiplerini getir
@@ -772,8 +777,8 @@ function ListingsContent() {
     if (filters.search) params.append('search', filters.search);
     if (filters.location) params.append('location', filters.location);
     
-    // Sıralama parametresi
-    if (sortBy !== 'newest') params.append('sortBy', sortBy);
+    // Sıralama parametresi - pendingSortBy değerini kullan çünkü bu değer kullanıcının güncel olarak seçtiği değer
+    if (pendingSortBy !== 'newest') params.append('sortBy', pendingSortBy);
     
     // URL'yi güncelle
     const newUrl = `${window.location.pathname}?${params.toString()}`;
